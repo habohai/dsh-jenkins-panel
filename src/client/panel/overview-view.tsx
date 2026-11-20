@@ -227,6 +227,17 @@ function ConnectionSelect({
   )
 }
 
+/** Tiny link icon for the Jenkins connection tag. */
+function ConnectionGlyph() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M4.6 7.4 7.4 4.6" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      <path d="M4.2 8.5 3.3 9.4a1.9 1.9 0 0 1-2.7-2.7l1.5-1.5a1.9 1.9 0 0 1 2.7 0" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      <path d="M7.8 3.5l.9-.9a1.9 1.9 0 0 1 2.7 2.7L9.9 6.8a1.9 1.9 0 0 1-2.7 0" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 /** Icons for Tag / branch / commit. */
 function VersionGlyph({ kind }: { kind: OverviewVersionKind }) {
   if (kind === 'tag') {
@@ -454,7 +465,10 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
                   </span>
                 </span>
                 <span className="jenkins_overviewBottom">
-                  <span className="jenkins_connTag" title={`连接 ${r.connection}`}>{r.connection}</span>
+                  <span className="jenkins_connTag" title={`连接 ${r.connection}`}>
+                    <ConnectionGlyph />
+                    {r.connection}
+                  </span>
                   <VersionChip record={r} />
                   {r.workspaceName && (
                     <span className="jenkins_wsTag" title={r.workspaceName}>{r.workspaceName}</span>

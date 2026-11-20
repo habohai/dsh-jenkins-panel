@@ -373,9 +373,16 @@ body[data-ds-dark-theme] {
 }
 
 .jenkins_connTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 10px;
   opacity: 0.75;
   margin-left: 4px;
+}
+
+.jenkins_overviewBottom .jenkins_connTag {
+  margin-left: 0;
 }
 
 .jenkins_connTagWarn {
