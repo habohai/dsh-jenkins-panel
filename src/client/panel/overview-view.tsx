@@ -79,18 +79,43 @@ export function overviewRecordLabel(record: Pick<TriggerRecord, 'displayName' | 
   return `${app}.${base}`
 }
 
-/** 编译分支：兼容各 Jenkinsfile 常见的分支参数名；缺省 undefined。 */
-export function overviewBranch(record: Pick<TriggerRecord, 'params'>): string | undefined {
-  for (const key of ['GITEE_BRANCH', 'GIT_BRANCH', 'BRANCH_NAME', 'BRANCH', 'git_branch', 'branch'] as const) {
-    const raw = record.params?.[key]
-    if (typeof raw !== 'string') continue
-    const value = raw.trim().replace(/^refs\/heads\//, '').replace(/^origin\//, '')
-    if (value !== '') return value
+/** 构建版本：Tag / 分支 / Commit，用于总览第二行。 */
+export type OverviewVersionKind = 'tag' | 'branch' | 'commit'
+
+export interface OverviewVersion {
+  kind: OverviewVersionKind
+  value: string
+}
+
+const VERSION_KEYS: Record<OverviewVersionKind, readonly string[]> = {
+  tag: ['GITEE_TAG', 'GIT_TAG', 'TAG_NAME', 'TAG', 'git_tag', 'tag', 'release_tag'],
+  branch: ['GITEE_BRANCH', 'GIT_BRANCH', 'BRANCH_NAME', 'BRANCH', 'git_branch', 'branch'],
+  commit: ['GITEE_COMMIT', 'GIT_COMMIT', 'COMMIT_ID', 'COMMIT', 'GIT_SHA', 'SHA', 'commit_id', 'git_commit', 'commit'],
+}
+
+/** 从触发参数里取一个用于展示的构建版本；Tag 优先，其次分支，最后 Commit。 */
+export function overviewVersion(record: Pick<TriggerRecord, 'params'>): OverviewVersion | undefined {
+  for (const kind of ['tag', 'branch', 'commit'] as const) {
+    for (const key of VERSION_KEYS[kind]) {
+      const raw = record.params?.[key]
+      if (typeof raw !== 'string') continue
+      let value = raw.trim()
+      if (value === '') continue
+      value = value.replace(/^refs\/tags\//, '').replace(/^refs\/heads\//, '').replace(/^origin\//, '')
+      if (kind === 'commit' && /^[0-9a-f]{10,40}$/i.test(value)) value = value.slice(0, 8)
+      if (value !== '') return { kind, value }
+    }
   }
   return undefined
 }
 
-/** 触发时间显示（epoch ms → 本地 HH:MM:SS；无效 → '—'） */
+/** 兼容旧调用：只取分支，不展示 tag/commit。 */
+export function overviewBranch(record: Pick<TriggerRecord, 'params'>): string | undefined {
+  const version = overviewVersion(record)
+  return version?.kind === 'branch' ? version.value : undefined
+}
+
+/** 触发时间显示/** 触发时间显示（epoch ms → 本地 HH:MM:SS；无效 → '—'） */
 export function formatRecordTime(ts: number | undefined): string {
   if (ts == null || !Number.isFinite(ts) || ts <= 0) return '—'
   const d = new Date(ts)
@@ -190,8 +215,24 @@ function ConnectionSelect({
   )
 }
 
-/** Small branch glyph for the overview metadata line. */
-function BranchGlyph() {
+/** Icons for Tag / branch / commit. */
+function VersionGlyph({ kind }: { kind: OverviewVersionKind }) {
+  if (kind === 'tag') {
+    return (
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <path d="M2 2h3l5 5-3 3-5-5V2Z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
+        <circle cx="4" cy="4" r=".75" fill="currentColor" />
+      </svg>
+    )
+  }
+  if (kind === 'commit') {
+    return (
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1" />
+        <path d="M1 6h3M8 6h3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      </svg>
+    )
+  }
   return (
     <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
       <circle cx="3" cy="2" r="1.1" stroke="currentColor" strokeWidth="1" />
@@ -199,6 +240,19 @@ function BranchGlyph() {
       <circle cx="9" cy="4" r="1.1" stroke="currentColor" strokeWidth="1" />
       <path d="M3 3.1v5.8M9 5.1v1a2.9 2.9 0 0 1-2.9 2.9H3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
     </svg>
+  )
+}
+
+/** One Tag / branch / commit chip for the metadata line. */
+function VersionChip({ record }: { record: TriggerRecord }) {
+  const version = overviewVersion(record)
+  if (version === undefined) return null
+  const label = version.kind === 'tag' ? 'Tag' : version.kind === 'branch' ? '分支' : 'Commit'
+  return (
+    <span className="jenkins_versionTag" data-kind={version.kind} title={`${label} ${version.value}`}>
+      <VersionGlyph kind={version.kind} />
+      <span className="jenkins_versionText">{version.value}</span>
+    </span>
   )
 }
 
@@ -389,12 +443,7 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
                 </span>
                 <span className="jenkins_overviewBottom">
                   <span className="jenkins_connTag">{r.connection}</span>
-                  {overviewBranch(r) !== undefined && (
-                    <span className="jenkins_branchTag" title={`分支 ${overviewBranch(r)}`}>
-                      <BranchGlyph />
-                      <span className="jenkins_branchText">{overviewBranch(r)}</span>
-                    </span>
-                  )}
+                  <VersionChip record={r} />
                   {r.workspaceName && (
                     <span className="jenkins_wsTag" title={r.workspaceName}>{r.workspaceName}</span>
                   )}

@@ -1377,7 +1377,7 @@ body[data-ds-dark-theme] {
   overflow: hidden;
 }
 
-.jenkins_branchTag {
+.jenkins_versionTag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1393,7 +1393,17 @@ body[data-ds-dark-theme] {
   white-space: nowrap;
 }
 
-.jenkins_branchText {
+.jenkins_versionTag[data-kind="tag"] {
+  background: rgba(224, 160, 63, 0.12);
+  color: var(--dsh-st-warn);
+}
+
+.jenkins_versionTag[data-kind="commit"] {
+  background: var(--dsh-bg-inset);
+  color: var(--dsh-text-2);
+}
+
+.jenkins_versionText {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

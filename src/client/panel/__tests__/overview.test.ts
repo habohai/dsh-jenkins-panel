@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildListQuery, formatRecordTime, matchesFilter, overviewBranch, overviewRecordLabel, statusDotClass, workspaceFilterNotice } from '../overview-view.js'
+import { buildListQuery, formatRecordTime, matchesFilter, overviewBranch, overviewRecordLabel, overviewVersion, statusDotClass, workspaceFilterNotice } from '../overview-view.js'
 import type { TriggerStatus } from '../../api.js'
 
 describe('matchesFilter（状态过滤多选）', () => {
@@ -101,5 +101,21 @@ describe('overviewBranch（第二行分支信息）', () => {
   it('returns undefined when no branch parameter exists', () => {
     expect(overviewBranch({ params: {} })).toBeUndefined()
     expect(overviewBranch({ params: { GITEE_BRANCH: '   ' } })).toBeUndefined()
+  })
+})
+
+
+describe('overviewVersion（Tag / 分支 / Commit）', () => {
+  it('prefers tag, then branch, then commit', () => {
+    expect(overviewVersion({ params: { TAG_NAME: 'v1.2.3', GITEE_BRANCH: 'dev', GIT_COMMIT: 'abcdef123456' } })).toEqual({
+      kind: 'tag',
+      value: 'v1.2.3',
+    })
+    expect(overviewVersion({ params: { GITEE_BRANCH: 'origin/dev' } })).toEqual({ kind: 'branch', value: 'dev' })
+  })
+
+  it('shortens commit hashes and strips ref prefixes', () => {
+    expect(overviewVersion({ params: { GIT_COMMIT: 'abcdef1234567890' } })).toEqual({ kind: 'commit', value: 'abcdef12' })
+    expect(overviewVersion({ params: { GIT_TAG: 'refs/tags/v2' } })).toEqual({ kind: 'tag', value: 'v2' })
   })
 })
