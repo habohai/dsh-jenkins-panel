@@ -36,6 +36,15 @@ interface SlotsFace {
   inject: SlotCore['inject']
 }
 
+/** 右侧栏 guide 入口（0.2.0 `SidebarRightGuideEntry` 的必要子集） */
+interface SidebarRightGuideEntryFace {
+  readonly id: string
+  readonly order: number
+  readonly title: () => string
+  readonly description?: () => string
+  readonly icon?: (props: { size?: number }) => unknown
+}
+
 /** 右侧栏页签类型注册面（stage 1） */
 interface SidebarRightTabsFace {
   register: (definition: {
@@ -44,6 +53,7 @@ interface SidebarRightTabsFace {
     readonly priority?: 'extension' | 'builtin' | 'fallback'
     readonly title: (address: string) => string
     readonly patterns?: readonly string[]
+    readonly guide?: readonly SidebarRightGuideEntryFace[]
   }) => () => void
   get: (kind: string) => { readonly id: string; readonly kind: string } | undefined
 }

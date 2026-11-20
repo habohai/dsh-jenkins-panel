@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { panelVisibleOf } from '../mount.js'
+import { panelVisibleOf, registerPanel } from '../mount.js'
 
 describe('panelVisibleOf（官方 tab.visible 派生 + 坏形状兜底）', () => {
   it('undefined / null info → visible（官方槽位缺省时常显）', () => {
@@ -28,5 +28,31 @@ describe('panelVisibleOf（官方 tab.visible 派生 + 坏形状兜底）', () =
     expect(panelVisibleOf({} as never)).toBe(true)
     expect(panelVisibleOf({ tab: undefined } as never)).toBe(true)
     expect(panelVisibleOf({ tab: {} } as never)).toBe(true)
+  })
+})
+
+
+describe('registerPanel（右侧栏 guide 入口）', () => {
+  it('registers a right-Sidebar guide entry', () => {
+    const definitions: Array<Record<string, unknown>> = []
+    const ctx = {
+      sidebarRightTabs: {
+        register: (definition: Record<string, unknown>) => {
+          definitions.push(definition)
+          return () => {}
+        },
+        get: () => undefined,
+      },
+      slots: {
+        inject: (_name: string, callback: () => () => void) => callback(),
+        register: () => () => {},
+      },
+    } as never
+    const dispose = registerPanel(ctx)
+    expect(definitions).toHaveLength(1)
+    expect(definitions[0]?.guide).toEqual([
+      expect.objectContaining({ id: 'dsh-jenkins-panel', order: 30 }),
+    ])
+    dispose()
   })
 })

@@ -1,14 +1,11 @@
 /**
  * dsh-jenkins-panel client 入口
  *
- * apply() 注册四个生命周期 effect（按插件生命周期可逆、卸载逆序清理）：
+ * apply() 注册三个生命周期 effect（按插件生命周期可逆、卸载逆序清理）：
  *   - registerPanel       0.1.5 挂载改造：注册官方右侧栏页签类型
  *                         （`ctx.sidebarRightTabs.register`）+ 正文
  *                         （keyed 槽位 `sidebar.right.pane.tab`）。
  *                         替代 0.1.1 的 body 级自绘容器（mountPanel）。
- *   - registerEntryIcon   入口接入宿主官方 **`sidebar.footer.action`** 槽位
- *                         （与 dsh-eap-todo 同位置，左侧栏底部入口；list 槽位加性，
- *                         任何会话都可见，名称「Jenkins面板」）；点击开合官方右侧栏。
  *   - registerSettingsCard 设置卡片（settings.section 注册 id=dsh-jenkins-panel 分区）
  *   - registerPluginPageConfig 插件页配置（0.2.0 plugins.bundle.config + plugins.row.config：
  *                         插件页直接查看并配置插件设置，与设置卡片共用 SettingsCard）
@@ -21,7 +18,6 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 
 import { registerPanel } from './panel/mount.js'
-import { registerEntryIcon } from './entry-icon.js'
 import { registerSettingsCard } from './settings-card.js'
 import { registerPluginPageConfig } from './plugin-page-config.js'
 
@@ -43,9 +39,6 @@ export const inject = ['slots', 'sessions', 'uiConversation', 'sidebarRight', 's
 export function apply(ctx: ClientContext): void {
   // 0.1.5 挂载改造：注册官方右侧栏页签类型 + 正文（替代 body 级自绘容器）
   ctx.effect(() => registerPanel(ctx), 'dsh-jenkins-panel: panel register')
-
-  // 入口接入 sidebar.footer.action 槽位（与 dsh-eap-todo 同位置）
-  ctx.effect(() => registerEntryIcon(ctx), 'dsh-jenkins-panel: entry icon')
 
   // 设置卡片
   ctx.effect(() => registerSettingsCard(ctx), 'dsh-jenkins-panel: settings card')

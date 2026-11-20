@@ -1,0 +1,5 @@
+# Project-local toolchain: Node matches CI; pnpm 11 launcher honors
+# package.json packageManager (pnpm@10.34.5) when running in this repo.
+[tools]
+node = "22.23.4"
+pnpm = "11.5.1"

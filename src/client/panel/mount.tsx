@@ -21,11 +21,17 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 
 import type { SidebarRightTabInfoFace } from '../types/dsh-0.2.0.js'
 import { PanelBody } from './panel-host.js'
+import { JENKINS_ICON_DATA_URL } from '../jenkins-icon.js'
 
 /** 页签类型 id（实现身份，= 正文注册的 key）；用包名，天然全局唯一 */
 const TAB_ID = 'dsh-jenkins-panel'
 /** 页签 kind（openTab 判别符） */
 export const TAB_KIND = 'dsh-jenkins-panel'
+
+/** Jenkins glyph for the right-Sidebar guide entry. */
+function JenkinsGuideIcon({ size = 18 }: { size?: number }) {
+  return <img src={JENKINS_ICON_DATA_URL} alt="" width={size} height={size} draggable={false} style={{ display: 'block', objectFit: 'contain' }} />
+}
 
 /**
  * 官方右侧栏服务读取（未提供 → undefined）。
@@ -105,6 +111,15 @@ export function registerPanel(ctx: ClientContext): () => void {
     kind: TAB_KIND,
     priority: 'extension',
     title: () => 'Jenkins面板',
+    // Give the right-Sidebar guide an entry, alongside 会话信息 / 任务. Without
+    // this the only entry point would be the removed left-footer icon.
+    guide: [{
+      id: 'dsh-jenkins-panel',
+      order: 30,
+      title: () => 'Jenkins面板',
+      description: () => '构建、日志、任务与产物',
+      icon: JenkinsGuideIcon,
+    }],
   })
 
   /**
