@@ -398,8 +398,8 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
                 <span className="jenkins_wsTag" title={r.workspaceName}>{r.workspaceName}</span>
               )}
               <span className="jenkins_metaRight jenkins_metaInline">
-                <span>{formatRecordTime(r.triggeredAt)}</span>
-                <span>{STATUS_TEXT[r.status]}</span>
+                <span className="jenkins_overviewStatus">{STATUS_TEXT[r.status]}</span>
+                <span className="jenkins_overviewTime">{formatRecordTime(r.triggeredAt)}</span>
               </span>
               <button
                 type="button"
