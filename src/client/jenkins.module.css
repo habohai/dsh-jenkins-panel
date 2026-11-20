@@ -1303,20 +1303,75 @@ body[data-ds-dark-theme] {
   white-space: nowrap;
 }
 
-/* 总览行右侧：状态在前、时间在后。状态字数不同（成功/已取消），用固定 3em
-   列宽 + 右对齐；时间等长并用 tabular-nums，整列不会随状态跳宽。 */
+/* 总览行两行布局：第一行主标签 + #号 + 状态 + 时间，第二行连接/工作区/任务路径。
+   状态字数不同（成功/已取消），用固定 3em 列宽 + 右对齐；时间等长用 tabular-nums，
+   第一行右侧不会随状态跳宽。 */
+.jenkins_row {
+  align-items: flex-start;
+}
+
+.jenkins_row > .jenkins_st {
+  margin-top: 5px;
+}
+
+.jenkins_overviewTop {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.jenkins_overviewTop .jenkins_tnodeDisplay {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jenkins_overviewBuild {
+  flex: 0 0 auto;
+  color: var(--dsh-text-3);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
 .jenkins_overviewStatus {
-  display: inline-block;
-  width: 3em;
   flex: 0 0 3em;
+  width: 3em;
   text-align: right;
+  color: var(--dsh-text-3);
+  font-size: 10.5px;
 }
 
 .jenkins_overviewTime {
-  display: inline-block;
+  flex: 0 0 auto;
+  margin-left: auto;
   min-width: 8ch;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.jenkins_overviewBottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 3px;
+  overflow: hidden;
+}
+
+.jenkins_overviewJob {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsh-text-3);
+  font-size: 10.5px;
+}
+
+.jenkins_row > .jenkins_rowDel {
+  margin-top: 1px;
 }
 
 /* ===== CLIENT-M2-03 总览：tab/chips/记录行/删除 ===== */

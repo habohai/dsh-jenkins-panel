@@ -385,21 +385,21 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
             >
               <span className={`jenkins_st ${statusDotClass(r.status)}`} />
               <span className="jenkins_rowMain">
-                <span className="jenkins_tnodeName">
+                <span className="jenkins_overviewTop">
                   <span className="jenkins_tnodeDisplay">{overviewRecordLabel(r)}</span>
-                  <span className="jenkins_tnodePath">
-                    {r.jobName}
-                    {r.buildNumber ? ` · #${r.buildNumber}` : ' · 排队中'}
+                  <span className="jenkins_overviewBuild">
+                    {r.buildNumber ? `#${r.buildNumber}` : '排队中'}
                   </span>
+                  <span className="jenkins_overviewStatus">{STATUS_TEXT[r.status]}</span>
+                  <span className="jenkins_overviewTime">{formatRecordTime(r.triggeredAt)}</span>
                 </span>
-              </span>
-              <span className="jenkins_connTag">{r.connection}</span>
-              {r.workspaceName && (
-                <span className="jenkins_wsTag" title={r.workspaceName}>{r.workspaceName}</span>
-              )}
-              <span className="jenkins_metaRight jenkins_metaInline">
-                <span className="jenkins_overviewStatus">{STATUS_TEXT[r.status]}</span>
-                <span className="jenkins_overviewTime">{formatRecordTime(r.triggeredAt)}</span>
+                <span className="jenkins_overviewBottom">
+                  <span className="jenkins_connTag">{r.connection}</span>
+                  {r.workspaceName && (
+                    <span className="jenkins_wsTag" title={r.workspaceName}>{r.workspaceName}</span>
+                  )}
+                  <span className="jenkins_overviewJob">{r.jobName}</span>
+                </span>
               </span>
               <button
                 type="button"
