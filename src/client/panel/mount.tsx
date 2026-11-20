@@ -29,9 +29,11 @@ const TAB_ID = 'dsh-jenkins-panel'
 export const TAB_KIND = 'dsh-jenkins-panel'
 
 /** Jenkins glyph for the right-Sidebar guide entry. */
-function JenkinsGuideIcon({ size = 16 }: { size?: number }) {
-  const px = Math.min(size, 16)
-  return <img src={JENKINS_ICON_DATA_URL} alt="" width={px} height={px} draggable={false} style={{ display: 'block', objectFit: 'contain', borderRadius: 3 }} />
+function JenkinsGuideIcon({ size }: { size?: number }) {
+  // The guide draws line icons around 22-24px; keep the branded glyph in that
+  // range instead of shrinking it to the tab-title size.
+  const px = Math.max(20, Math.min(size ?? 22, 24))
+  return <img src={JENKINS_ICON_DATA_URL} alt="" width={px} height={px} draggable={false} style={{ display: 'block', objectFit: 'contain', borderRadius: 4 }} />
 }
 
 /** Icon + label for the tab strip; other sidebar tabs render the same shape. */
