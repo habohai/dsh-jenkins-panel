@@ -1303,8 +1303,8 @@ body[data-ds-dark-theme] {
   white-space: nowrap;
 }
 
-/* 总览行两行布局（参考飞书任务）：第一行主标签 + #号，时间靠右；
-   第二行状态 + 连接/工作区/任务路径。时间不与状态同列，彻底避免字数变化。 */
+/* 总览行两行布局（对齐飞书任务）：第一行主标签 + #号，右侧状态 + 时间；
+   第二行连接/工作区/任务路径。状态定宽右对齐，时间定宽，标题再长也不挤。 */
 .jenkins_row {
   align-items: flex-start;
 }
@@ -1335,15 +1335,24 @@ body[data-ds-dark-theme] {
   font-variant-numeric: tabular-nums;
 }
 
+.jenkins_overviewMeta {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-left: auto;
+}
+
 .jenkins_overviewStatus {
   flex: none;
-  color: var(--dsh-text-2);
+  min-width: 3em;
+  text-align: right;
+  color: var(--dsh-text-3);
   font-size: 10.5px;
 }
 
 .jenkins_overviewTime {
-  flex: 0 0 auto;
-  margin-left: auto;
+  flex: none;
   min-width: 8ch;
   font-variant-numeric: tabular-nums;
   text-align: right;

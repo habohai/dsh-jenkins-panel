@@ -390,10 +390,12 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
                   <span className="jenkins_overviewBuild">
                     {r.buildNumber ? `#${r.buildNumber}` : '排队中'}
                   </span>
-                  <span className="jenkins_overviewTime">{formatRecordTime(r.triggeredAt)}</span>
+                  <span className="jenkins_overviewMeta">
+                    <span className="jenkins_overviewStatus">{STATUS_TEXT[r.status]}</span>
+                    <span className="jenkins_overviewTime">{formatRecordTime(r.triggeredAt)}</span>
+                  </span>
                 </span>
                 <span className="jenkins_overviewBottom">
-                  <span className="jenkins_overviewStatus">{STATUS_TEXT[r.status]}</span>
                   <span className="jenkins_connTag">{r.connection}</span>
                   {r.workspaceName && (
                     <span className="jenkins_wsTag" title={r.workspaceName}>{r.workspaceName}</span>
