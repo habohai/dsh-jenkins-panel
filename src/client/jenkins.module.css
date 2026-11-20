@@ -1344,7 +1344,8 @@ body[data-ds-dark-theme] {
   flex: none;
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  /* 与飞书任务 .ft-line 的 gap 保持一致 */
+  gap: 7px;
   margin-left: auto;
 }
 
