@@ -30,9 +30,8 @@ export const TAB_KIND = 'dsh-jenkins-panel'
 
 /** Jenkins glyph for the right-Sidebar guide entry. */
 function JenkinsGuideIcon(_props: { size?: number }) {
-  // Between the tab-title size (16) and the guide's line icons (~22): 18px
-  // keeps the branded glyph from crowding or disappearing.
-  const px = 18
+  // Final visual size for the guide's branded glyph.
+  const px = 20
   return <img src={JENKINS_ICON_DATA_URL} alt="" width={px} height={px} draggable={false} style={{ display: 'block', objectFit: 'contain', borderRadius: 4 }} />
 }
 
