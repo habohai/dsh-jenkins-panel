@@ -20,6 +20,7 @@ import {
   fetchTriggeredList,
   listConnections,
   type ConnectionInfo,
+  type TriggerRecord,
   type TriggeredListResult,
   type TriggerStatus,
 } from '../api.js'
@@ -69,6 +70,14 @@ export function statusDotClass(status: TriggerStatus): string {
     case 'aborted':
       return 'jenkins_stAborted'
   }
+}
+
+/** 总览行主标签：有 app_name 时显示 `<app_name>.<job>`，否则沿用 displayName。 */
+export function overviewRecordLabel(record: Pick<TriggerRecord, 'displayName' | 'jobName' | 'params'>): string {
+  const base = record.displayName.trim() !== '' ? record.displayName.trim() : record.jobName
+  const app = typeof record.params?.app_name === 'string' ? record.params.app_name.trim() : ''
+  if (app === '' || base.toLowerCase().startsWith(`${app.toLowerCase()}.`)) return base
+  return `${app}.${base}`
 }
 
 /** 触发时间显示（epoch ms → 本地 HH:MM:SS；无效 → '—'） */
@@ -364,7 +373,7 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
                   connection: r.connection,
                   jobName: r.jobName,
                   buildNumber: r.buildNumber,
-                  displayName: r.displayName,
+                  displayName: overviewRecordLabel(r),
                   status: r.status,
                   params: r.params,
                   // 记录 id 带入详情：构建已被 Jenkins 过期清理时可就地删除这条失效记录
@@ -377,7 +386,7 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
               <span className={`jenkins_st ${statusDotClass(r.status)}`} />
               <span className="jenkins_rowMain">
                 <span className="jenkins_tnodeName">
-                  <span className="jenkins_tnodeDisplay">{r.displayName}</span>
+                  <span className="jenkins_tnodeDisplay">{overviewRecordLabel(r)}</span>
                   <span className="jenkins_tnodePath">
                     {r.jobName}
                     {r.buildNumber ? ` · #${r.buildNumber}` : ' · 排队中'}

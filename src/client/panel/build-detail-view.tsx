@@ -96,6 +96,15 @@ export function formatDuration(ms?: number): string {
   return `${hours}h ${restMinutes}m`
 }
 
+/**
+ * 构建耗时：构建中 Jenkins 的 duration 恒为 0，必须用 now - timestamp 计算；
+ * 终态才使用 Jenkins 的 duration。
+ */
+export function buildElapsedMs(info: BuildInfo | null, building: boolean, now: number): number | undefined {
+  if (building && typeof info?.timestamp === 'number') return Math.max(0, now - info.timestamp)
+  return info?.duration
+}
+
 /** 时间格式化（本地 HH:MM:SS；缺省空串） */
 export function formatTime(ts?: number): string {
   if (ts == null) return ''
@@ -283,6 +292,16 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
   const [visited, setVisited] = useState<Set<BuildSubTab>>(() => new Set<BuildSubTab>(['log']))
 
   const { building, queued, result } = deriveState(entry, info)
+  const [now, setNow] = useState(() => Date.now())
+
+  // Jenkins duration stays 0 until the build finishes; tick once a second while
+  // building so the elapsed time is live instead of frozen at 0s.
+  useEffect(() => {
+    if (!building) return
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [building])
 
   // 装载构建状态（操作后 reload 刷新）
   useEffect(() => {
@@ -469,7 +488,7 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
               jobName
             )}
             {info?.timestamp ? ` · ${formatTime(info.timestamp)}` : ''}
-            {info?.duration != null ? ` · 耗时 ${formatDuration(info.duration)}` : ''}
+            {buildElapsedMs(info, building, now) != null ? ` · 耗时 ${formatDuration(buildElapsedMs(info, building, now))}` : ''}
           </div>
           <div className="jenkins_ops">
             {buttons.retry && (

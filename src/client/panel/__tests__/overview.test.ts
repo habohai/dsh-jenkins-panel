@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildListQuery, formatRecordTime, matchesFilter, statusDotClass, workspaceFilterNotice } from '../overview-view.js'
+import { buildListQuery, formatRecordTime, matchesFilter, overviewRecordLabel, statusDotClass, workspaceFilterNotice } from '../overview-view.js'
 import type { TriggerStatus } from '../../api.js'
 
 describe('matchesFilter（状态过滤多选）', () => {
@@ -71,5 +71,21 @@ describe('workspaceFilterNotice（P0-b：当前工作区未解析时必须吭声
   it('all → 永不提示（用户主动选了全部）', () => {
     expect(workspaceFilterNotice('all', false)).toBeNull()
     expect(workspaceFilterNotice('all', true)).toBeNull()
+  })
+})
+
+
+describe('overviewRecordLabel（app_name 优先）', () => {
+  it('prefixes app_name when present', () => {
+    expect(overviewRecordLabel({ displayName: 'ai-dx', jobName: 'ai-dx', params: { app_name: 'taichu-web-new' } })).toBe(
+      'taichu-web-new.ai-dx',
+    )
+  })
+
+  it('keeps the display name when app_name is absent or already included', () => {
+    expect(overviewRecordLabel({ displayName: 'ai-dx', jobName: 'ai-dx', params: {} })).toBe('ai-dx')
+    expect(
+      overviewRecordLabel({ displayName: 'taichu-web-new.ai-dx', jobName: 'ai-dx', params: { app_name: 'taichu-web-new' } }),
+    ).toBe('taichu-web-new.ai-dx')
   })
 })

@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { artifactDownloadUrl } from '../../api.js'
 import {
   buildJobLink,
+  buildElapsedMs,
   buildStatusDotClass,
   buildStatusDotTitle,
   deriveState,
@@ -244,5 +245,16 @@ describe('goneNotice / goneNoticeReason（记录失效：一句话覆盖改名�
     expect(lines).toHaveLength(2)
     expect(lines[0]).toBe(goneNoticeReason(info))
     expect(lines[1]).toBe(`${GONE_NOTICE_ACTION_LEAD}请到总览删除它。`)
+  })
+})
+
+
+describe('buildElapsedMs（构建中 live 耗时）', () => {
+  it('uses now - timestamp while building even when Jenkins duration is 0', () => {
+    expect(buildElapsedMs({ number: 1, url: 'u', building: true, duration: 0, timestamp: 1_000 }, true, 5_500)).toBe(4_500)
+  })
+
+  it('uses Jenkins duration when terminal', () => {
+    expect(buildElapsedMs({ number: 1, url: 'u', building: false, duration: 123_000 }, false, 5_500)).toBe(123_000)
   })
 })
