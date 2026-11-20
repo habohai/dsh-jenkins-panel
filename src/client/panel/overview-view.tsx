@@ -115,7 +115,19 @@ export function overviewBranch(record: Pick<TriggerRecord, 'params'>): string | 
   return version?.kind === 'branch' ? version.value : undefined
 }
 
-/** 触发时间显示/** 触发时间显示（epoch ms → 本地 HH:MM:SS；无效 → '—'） */
+/** 触发时间显示/** 任务路径是否值得单独展示：与连接名相同、或已包含在 app_name 主标签里时隐藏。 */
+export function overviewJobPathVisible(
+  record: Pick<TriggerRecord, 'connection' | 'jobName'>,
+  label: string,
+): boolean {
+  const job = record.jobName.trim()
+  if (job === '') return false
+  if (job === record.connection) return false
+  if (label === job || label.endsWith(`.${job}`)) return false
+  return true
+}
+
+/** 触发时间显示（epoch ms → 本地 HH:MM:SS；无效 → '—'） */
 export function formatRecordTime(ts: number | undefined): string {
   if (ts == null || !Number.isFinite(ts) || ts <= 0) return '—'
   const d = new Date(ts)
@@ -442,12 +454,14 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
                   </span>
                 </span>
                 <span className="jenkins_overviewBottom">
-                  <span className="jenkins_connTag">{r.connection}</span>
+                  <span className="jenkins_connTag" title={`连接 ${r.connection}`}>{r.connection}</span>
                   <VersionChip record={r} />
                   {r.workspaceName && (
                     <span className="jenkins_wsTag" title={r.workspaceName}>{r.workspaceName}</span>
                   )}
-                  <span className="jenkins_overviewJob">{r.jobName}</span>
+                  {overviewJobPathVisible(r, overviewRecordLabel(r)) && (
+                    <span className="jenkins_overviewJob" title={`任务 ${r.jobName}`}>{r.jobName}</span>
+                  )}
                 </span>
               </span>
             </div>

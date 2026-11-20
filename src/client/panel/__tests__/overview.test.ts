@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildListQuery, formatRecordTime, matchesFilter, overviewBranch, overviewRecordLabel, overviewVersion, statusDotClass, workspaceFilterNotice } from '../overview-view.js'
+import { buildListQuery, formatRecordTime, matchesFilter, overviewBranch, overviewJobPathVisible, overviewRecordLabel, overviewVersion, statusDotClass, workspaceFilterNotice } from '../overview-view.js'
 import type { TriggerStatus } from '../../api.js'
 
 describe('matchesFilter（状态过滤多选）', () => {
@@ -117,5 +117,17 @@ describe('overviewVersion（Tag / 分支 / Commit）', () => {
   it('shortens commit hashes and strips ref prefixes', () => {
     expect(overviewVersion({ params: { GIT_COMMIT: 'abcdef1234567890' } })).toEqual({ kind: 'commit', value: 'abcdef12' })
     expect(overviewVersion({ params: { GIT_TAG: 'refs/tags/v2' } })).toEqual({ kind: 'tag', value: 'v2' })
+  })
+})
+
+
+describe('overviewJobPathVisible（避免第二行重复）', () => {
+  it('hides the job path when it equals the connection or is already in the label', () => {
+    expect(overviewJobPathVisible({ connection: 'ai-dx', jobName: 'ai-dx' }, 'taichu-studio.ai-dx')).toBe(false)
+    expect(overviewJobPathVisible({ connection: 'prod', jobName: 'ai-dx' }, 'taichu-studio.ai-dx')).toBe(false)
+  })
+
+  it('keeps a distinct folder path', () => {
+    expect(overviewJobPathVisible({ connection: 'prod', jobName: 'folder/ai-dx' }, 'taichu-studio.ai-dx')).toBe(true)
   })
 })
