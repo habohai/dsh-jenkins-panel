@@ -30,7 +30,6 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // 构建期被改写成「运行时注入 <style>」模块（scripts/build-client.mjs），见该 CSS 头注
 import '../jenkins.module.css'
 import { listConnections, type TreeJobNode } from '../api.js'
-import { JENKINS_ICON_DATA_URL } from '../jenkins-icon.js'
 import { panelStore } from './store.js'
 import { useSessionId } from './session.js'
 import { registerTriggerListener } from './trigger-listener.js'
@@ -127,10 +126,8 @@ export function JenkinsPanel({ ctx, visible, sessionId }: { ctx: ClientContext; 
     <div className="jenkins_panel" data-dsh-jenkins-panel="" role="complementary" aria-label="Jenkins 面板">
       <div className="jenkins_panelInner">
         <header className="jenkins_header">
-          <img src={JENKINS_ICON_DATA_URL} className="jenkins_logoImg" alt="" width={16} height={16} draggable={false} />
-          <span className="jenkins_title">Jenkins面板</span>
-          {/* 入口在左栏底部（sidebar.footer.action）：头部不放刷新/关闭按钮，
-              避免与入口冲突；状态更新时间在标题后方、圆点放到文字后方。 */}
+          {/* The tab strip already carries the icon + title; keep only the live
+              status here so the panel body does not repeat it. */}
           <span className="jenkins_live">
             <span data-dsh-jenkins-panel-live-text="">状态更新于 {lastUpdated}</span>
             <span className="jenkins_liveDot" aria-hidden="true" />

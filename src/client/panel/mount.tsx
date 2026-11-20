@@ -37,10 +37,10 @@ function JenkinsGuideIcon({ size = 16 }: { size?: number }) {
 /** Icon + label for the tab strip; other sidebar tabs render the same shape. */
 function JenkinsTabTitle() {
   return (
-    <>
-      <img src={JENKINS_ICON_DATA_URL} alt="" width={16} height={16} draggable={false} style={{ display: 'inline-block', verticalAlign: '-3px', marginRight: 6, borderRadius: 3, objectFit: 'contain' }} />
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+      <img src={JENKINS_ICON_DATA_URL} alt="" width={16} height={16} draggable={false} style={{ display: 'block', flex: 'none', borderRadius: 3, objectFit: 'contain' }} />
       <span>Jenkins面板</span>
-    </>
+    </span>
   )
 }
 

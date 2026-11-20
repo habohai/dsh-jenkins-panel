@@ -151,39 +151,21 @@ body[data-ds-dark-theme] {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 7px 14px;
   border-bottom: 1px solid var(--dsh-border);
   background: var(--dsh-bg-base);
   flex: 0 0 auto;
 }
 
-.jenkins_logo {
-  color: var(--dsh-accent);
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-}
 
-/* 面板头部 Jenkins 官方 favicon（用户 V7：图标 +「Jenkins面板」） */
-.jenkins_logoImg {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  border-radius: 3px;
-  display: block;
-}
 
-.jenkins_title {
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
 
 .jenkins_live {
   display: flex;
   align-items: center;
   gap: 5px;
-  /* 状态更新时间移至「Jenkins面板」标题后方（不再右对齐）；圆点在文字后方，顺序见 DOM */
-  margin-left: 6px;
+  /* 头部只保留状态行；页签本身已有图标 + 标题 */
+  margin-left: 0;
   font-size: 11px;
   color: var(--dsh-text-3);
   white-space: nowrap;
