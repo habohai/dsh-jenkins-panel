@@ -24,6 +24,7 @@ import type {
   BuildHistory,
   BuildInfo,
   BuildResult,
+  BuildStage,
   BuildSummary,
   FolderTreeNode,
   JobInfo,
@@ -323,6 +324,29 @@ export class JenkinsClient {
   /** build_status：与 getBuildInfo 同端点（语义别名，供路由/工具按名调用） */
   getBuildStatus(jobName: string, buildNumber?: number): Promise<BuildInfo> {
     return this.getBuildInfo(jobName, buildNumber)
+  }
+
+  /** build_stages：Pipeline 阶段（wfapi）；Freestyle 没有该端点 → 空数组。 */
+  async getBuildStages(jobName: string, buildNumber?: number): Promise<BuildStage[]> {
+    try {
+      const raw = await this.get<{ stages?: Array<Partial<BuildStage> & { id?: string; name?: string; status?: string }> }>(
+        `${this.buildPath(jobName, buildNumber)}/wfapi/describe`,
+        undefined,
+        `buildStages:${jobName}#${buildNumber ?? 'last'}`,
+      )
+      return (raw.stages ?? [])
+        .filter((stage) => typeof stage.name === 'string' && stage.name !== '')
+        .map((stage) => ({
+          id: String(stage.id ?? stage.name),
+          name: stage.name as string,
+          status: String(stage.status ?? 'UNKNOWN'),
+          ...(typeof stage.startTimeMillis === 'number' ? { startTimeMillis: stage.startTimeMillis } : {}),
+          ...(typeof stage.durationMillis === 'number' ? { durationMillis: stage.durationMillis } : {}),
+        }))
+    } catch (err) {
+      if (err instanceof JenkinsApiError && err.kind === 'not-found') return []
+      throw err
+    }
   }
 
   /** build_log：consoleText + 分页切片（startLine/limit/tail；缺省 tail=500） */

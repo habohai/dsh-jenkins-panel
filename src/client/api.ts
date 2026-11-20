@@ -112,6 +112,15 @@ export interface BuildInfo {
   }>
 }
 
+/** 构建阶段（build.stages：Pipeline wfapi；Freestyle 返回空数组） */
+export interface BuildStage {
+  id: string
+  name: string
+  status: string
+  startTimeMillis?: number
+  durationMillis?: number
+}
+
 /** 构建日志输出（build.log：tail/limit 控制，totalLines = 完整日志行数） */
 export interface LogOutput {
   jobName: string
@@ -158,6 +167,16 @@ export function fetchBuildStatus(
   opts: ApiCallOptions = {},
 ): Promise<BuildInfo> {
   return callApi<BuildInfo>('build.status', { jobName, buildNumber }, { ...opts, connection })
+}
+
+/** build.stages：Pipeline 构建阶段（Freestyle 无阶段 → 空数组） */
+export function fetchBuildStages(
+  connection: string,
+  jobName: string,
+  buildNumber?: number,
+  opts: ApiCallOptions = {},
+): Promise<BuildStage[]> {
+  return callApi<BuildStage[]>('build.stages', { jobName, buildNumber }, { ...opts, connection })
 }
 
 /** build.log：tail/limit 必带其一（tail 默认尾部；分段 = start/limit 翻页） */

@@ -22,6 +22,7 @@ import {
   goneNotice,
   goneNoticeReason,
   opButtonsFor,
+  stageStatusClass,
   type BuildDetailEntry,
 } from '../build-detail-view.js'
 import { isErrorLine, isFollowing, logQueryFor, LOG_PAGE_SIZE } from '../build-log-view.js'
@@ -256,5 +257,16 @@ describe('buildElapsedMs（构建中 live 耗时）', () => {
 
   it('uses Jenkins duration when terminal', () => {
     expect(buildElapsedMs({ number: 1, url: 'u', building: false, duration: 123_000 }, false, 5_500)).toBe(123_000)
+  })
+})
+
+describe('stageStatusClass（构建阶段状态样式）', () => {
+  it('maps pipeline stage statuses', () => {
+    expect(stageStatusClass('SUCCESS')).toBe('jenkins_stageOk')
+    expect(stageStatusClass('FAILED')).toBe('jenkins_stageFail')
+    expect(stageStatusClass('IN_PROGRESS')).toBe('jenkins_stageRun')
+    expect(stageStatusClass('ABORTED')).toBe('jenkins_stageAborted')
+    expect(stageStatusClass('PAUSED')).toBe('jenkins_stagePaused')
+    expect(stageStatusClass('SKIPPED')).toBe('jenkins_stageSkip')
   })
 })

@@ -475,3 +475,34 @@ describe('缺口补齐（FIN-M3-02）', () => {
     expect(params).toEqual([])
   })
 })
+
+describe('build_stages（wfapi Pipeline 阶段）', () => {
+  it('maps wfapi stages and hides Freestyle 404 as empty', async () => {
+    const seen: AxiosRequestConfig[] = []
+    const client = createClient((cfg) => {
+      seen.push(cfg)
+      if (cfg.url?.endsWith('/wfapi/describe')) {
+        return {
+          data: {
+            stages: [
+              { id: '1', name: 'Checkout', status: 'SUCCESS', startTimeMillis: 1000, durationMillis: 2000 },
+              { id: '2', name: 'Build', status: 'IN_PROGRESS', startTimeMillis: 3000, durationMillis: 0 },
+            ],
+          },
+        }
+      }
+      return {}
+    })
+    const stages = await client.getBuildStages('folder/app', 7)
+    expect(seen[0].url).toBe('/job/folder/job/app/7/wfapi/describe')
+    expect(stages).toEqual([
+      { id: '1', name: 'Checkout', status: 'SUCCESS', startTimeMillis: 1000, durationMillis: 2000 },
+      { id: '2', name: 'Build', status: 'IN_PROGRESS', startTimeMillis: 3000, durationMillis: 0 },
+    ])
+
+    const freestyle = createClient((cfg) => {
+      throw httpError(404, cfg)
+    })
+    await expect(freestyle.getBuildStages('folder/app', 7)).resolves.toEqual([])
+  })
+})

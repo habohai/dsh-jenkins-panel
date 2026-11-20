@@ -27,11 +27,13 @@ import {
   cancelBuild,
   deleteBuild,
   deleteTriggered,
+  fetchBuildStages,
   fetchBuildStatus,
   fetchJobInfo,
   isNotFoundError,
   retryBuild,
   type BuildInfo,
+  type BuildStage,
 } from '../api.js'
 import { ArtifactsView } from './artifacts-view.js'
 import { BuildLogView } from './build-log-view.js'
@@ -103,6 +105,24 @@ export function formatDuration(ms?: number): string {
 export function buildElapsedMs(info: BuildInfo | null, building: boolean, now: number): number | undefined {
   if (building && typeof info?.timestamp === 'number') return Math.max(0, now - info.timestamp)
   return info?.duration
+}
+
+/** 构建阶段状态 → 样式类（wfapi status 大小写不敏感）。 */
+export function stageStatusClass(status: string): string {
+  switch (status.toUpperCase()) {
+    case 'SUCCESS':
+      return 'jenkins_stageOk'
+    case 'FAILED':
+      return 'jenkins_stageFail'
+    case 'IN_PROGRESS':
+      return 'jenkins_stageRun'
+    case 'ABORTED':
+      return 'jenkins_stageAborted'
+    case 'PAUSED':
+      return 'jenkins_stagePaused'
+    default:
+      return 'jenkins_stageSkip'
+  }
 }
 
 /** 时间格式化（本地 HH:MM:SS；缺省空串） */
@@ -278,6 +298,7 @@ export function GoneNotice({ info, onDelete, busy }: GoneNoticeProps) {
 export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDeleted }: BuildDetailViewProps) {
   const { connection, jobName, buildNumber, displayName, recordId } = entry
   const [info, setInfo] = useState<BuildInfo | null>(null)
+  const [stages, setStages] = useState<BuildStage[]>([])
   const [reload, setReload] = useState(0)
   const [busy, setBusy] = useState<BuildOp | null>(null)
   const [deletingRecord, setDeletingRecord] = useState(false)
@@ -299,7 +320,7 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
   useEffect(() => {
     if (!building) return
     setNow(Date.now())
-    const timer = setInterval(() => setNow(Date.now()), 1000)
+    const timer = setInterval(() => setNow(Date.now()), STATUS_POLL_MS)
     return () => clearInterval(timer)
   }, [building])
 
@@ -336,6 +357,43 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
       cancelled = true
     }
   }, [connection, jobName, buildNumber, sessionId, queued, reload])
+
+  // 构建阶段：进入详情时拉一次；构建中随状态轮询一起刷新。Freestyle 无阶段 → 空数组（不渲染）。
+  useEffect(() => {
+    if (queued || buildNumber === undefined) {
+      setStages([])
+      return
+    }
+    let cancelled = false
+    fetchBuildStages(connection, jobName, buildNumber, { sessionId })
+      .then((next) => {
+        if (!cancelled) setStages(next)
+      })
+      .catch(() => {
+        if (!cancelled) setStages([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [connection, jobName, buildNumber, sessionId, queued, reload])
+
+  useEffect(() => {
+    if (!building || queued || buildNumber === undefined) return
+    let cancelled = false
+    const timer = setInterval(() => {
+      fetchBuildStages(connection, jobName, buildNumber, { sessionId })
+        .then((next) => {
+          if (!cancelled) setStages(next)
+        })
+        .catch(() => {
+          // 阶段接口瞬时错误静默，下一轮重试
+        })
+    }, STATUS_POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [building, queued, connection, jobName, buildNumber, sessionId])
 
   // 构建中状态轮询（用户 V7 点 1：状态需自动变化）：仅构建中轮询，终态即停 →
   // 操作按钮（取消 → 重试/删除）与头部的「构建中/耗时」随之自动刷新。
@@ -526,6 +584,31 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
         {loadError && !gone && <div className="jenkins_tnodeError">{loadError}</div>}
         {opMessage && <div className="jenkins_opMessage">{opMessage}</div>}
       </div>
+
+      {stages.length > 0 && (
+        <div className="jenkins_stages" data-dsh-jenkins-panel-stages="">
+          <div className="jenkins_stagesHead">
+            <span className="jenkins_stagesTitle">构建阶段</span>
+            <span className="jenkins_stagesMeta">
+              {stages.filter((stage) => stageStatusClass(stage.status) !== 'jenkins_stageRun').length}/{stages.length}
+            </span>
+          </div>
+          <ol className="jenkins_stageList">
+            {stages.map((stage) => {
+              const live = stageStatusClass(stage.status) === 'jenkins_stageRun'
+                && typeof stage.startTimeMillis === 'number'
+              const duration = live ? now - (stage.startTimeMillis as number) : stage.durationMillis
+              return (
+                <li className={`jenkins_stage ${stageStatusClass(stage.status)}`} key={`${stage.id}-${stage.name}`}>
+                  <span className="jenkins_stageDot" aria-hidden="true" />
+                  <span className="jenkins_stageName">{stage.name}</span>
+                  {duration != null ? <span className="jenkins_stageTime">{formatDuration(duration)}</span> : null}
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      )}
 
       <div className="jenkins_subTabs">
         {tabs.map((t) => (

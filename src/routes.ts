@@ -159,6 +159,8 @@ function dispatch(method: string, body: RouteBody, deps: JenkinsRoutesDeps): Pro
       return withResolvedClient(body, deps, (client, fullName) => client.getJobParams(fullName))
     case 'build.status':
       return withResolvedClient(body, deps, (client, fullName) => client.getBuildStatus(fullName, asInt(body.buildNumber)))
+    case 'build.stages':
+      return withResolvedClient(body, deps, (client, fullName) => client.getBuildStages(fullName, asInt(body.buildNumber)))
     case 'build.history':
       return withResolvedClient(body, deps, (client, fullName) =>
         client.getBuildHistory(fullName, {

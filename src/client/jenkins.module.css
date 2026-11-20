@@ -850,6 +850,97 @@ body[data-ds-dark-theme] {
   color: var(--dsh-text);
 }
 
+/* 构建阶段（wfapi）：参数区与日志子页签之间的一条轻量流水线 */
+.jenkins_stages {
+  margin: 0 0 12px;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--dsh-border);
+  border-radius: var(--dsh-radius-l);
+  background: var(--dsh-bg-elev);
+}
+
+.jenkins_stagesHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.jenkins_stagesTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsh-text-2);
+  letter-spacing: 0.02em;
+}
+
+.jenkins_stagesMeta {
+  font-size: 10px;
+  color: var(--dsh-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.jenkins_stageList {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 1px 0 3px;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dsh-scroll-thumb) transparent;
+}
+
+.jenkins_stage {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 4px 9px;
+  border: 1px solid var(--dsh-border);
+  border-radius: 999px;
+  background: var(--dsh-bg-panel);
+  color: var(--dsh-text-2);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.jenkins_stageDot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dsh-st-disabled);
+}
+
+.jenkins_stageName {
+  min-width: 0;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jenkins_stageTime {
+  flex: 0 0 auto;
+  color: var(--dsh-text-3);
+  font-family: var(--dsh-font-mono);
+  font-size: 10px;
+}
+
+.jenkins_stageOk { border-color: rgba(63, 185, 107, 0.28); }
+.jenkins_stageOk .jenkins_stageDot { background: var(--dsh-st-ok); }
+.jenkins_stageFail { border-color: rgba(224, 93, 93, 0.32); }
+.jenkins_stageFail .jenkins_stageDot { background: var(--dsh-st-fail); }
+.jenkins_stageRun { border-color: var(--dsh-accent-border); background: var(--dsh-accent-soft); color: var(--dsh-accent); }
+.jenkins_stageRun .jenkins_stageDot { background: var(--dsh-st-run); animation: jenkins_pulse 1s infinite; }
+.jenkins_stageAborted .jenkins_stageDot { background: var(--dsh-st-aborted); }
+.jenkins_stagePaused .jenkins_stageDot { background: var(--dsh-st-warn); }
+.jenkins_stageSkip { opacity: 0.7; }
+.jenkins_stageSkip .jenkins_stageDot { background: var(--dsh-st-disabled); }
+
 /* ===== CLIENT-M2-06 构建详情：操作/sub-tabs/日志/产物/工作空间 ===== */
 
 .jenkins_ops {

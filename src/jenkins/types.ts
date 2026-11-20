@@ -83,6 +83,15 @@ export interface BuildInfo {
   builtOn?: string
 }
 
+/** 构建阶段（Pipeline wfapi/describe；Freestyle 无阶段） */
+export interface BuildStage {
+  id: string
+  name: string
+  status: string
+  startTimeMillis?: number
+  durationMillis?: number
+}
+
 /** 构建引用（JobInfo.builds 元素） */
 export interface BuildReference {
   number: number
