@@ -91,6 +91,7 @@ describe('认证与 URL 拼装', () => {
     const info = await client.getBuildStatus('job')
     expect(seen[0].url).toBe('/job/job/lastBuild/api/json')
     expect(info.number).toBe(9)
+    expect(info.serverTime).toBeUndefined()
   })
 })
 
@@ -504,5 +505,17 @@ describe('build_stages（wfapi Pipeline 阶段）', () => {
       throw httpError(404, cfg)
     })
     await expect(freestyle.getBuildStages('folder/app', 7)).resolves.toEqual([])
+  })
+})
+
+
+describe('build status server clock', () => {
+  it('keeps the Jenkins Date header so live elapsed is not skewed by the browser clock', async () => {
+    const client = createClient(() => ({
+      data: { number: 9, url: 'u', building: true, duration: 0, timestamp: 1000 },
+      headers: { date: 'Fri, 20 Nov 2026 15:38:21 GMT' },
+    }))
+    const info = await client.getBuildStatus('job', 9)
+    expect(info.serverTime).toBe(Date.parse('Fri, 20 Nov 2026 15:38:21 GMT'))
   })
 })

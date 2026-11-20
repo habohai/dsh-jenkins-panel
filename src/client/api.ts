@@ -101,6 +101,8 @@ export interface BuildInfo {
   duration?: number
   estimatedDuration?: number
   timestamp?: number
+  /** Jenkins HTTP Date header (server clock; used to correct live elapsed time). */
+  serverTime?: number
   result?: string
   /**
    * Jenkins 原始 actions（含构建采用参数 ParametersAction.parameters，供「构建参数」展示）。

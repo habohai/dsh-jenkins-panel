@@ -79,6 +79,8 @@ export interface BuildInfo {
   duration?: number
   estimatedDuration?: number
   timestamp?: number
+  /** HTTP Date header from the Jenkins response (server clock, for live elapsed). */
+  serverTime?: number
   result?: BuildResult
   builtOn?: string
 }

@@ -300,6 +300,8 @@ export function GoneNotice({ info, onDelete, busy }: GoneNoticeProps) {
 export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDeleted }: BuildDetailViewProps) {
   const { connection, jobName, buildNumber, displayName, recordId } = entry
   const [info, setInfo] = useState<BuildInfo | null>(null)
+  /** Jenkins server clock - browser clock; live elapsed must not trust the browser clock. */
+  const [clockOffset, setClockOffset] = useState(0)
   const [stages, setStages] = useState<BuildStage[]>([])
   const [reload, setReload] = useState(0)
   const [busy, setBusy] = useState<BuildOp | null>(null)
@@ -335,7 +337,9 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
     setGoneJobUrl(undefined)
     fetchBuildStatus(connection, jobName, buildNumber && buildNumber > 0 ? buildNumber : undefined, { sessionId })
       .then((status) => {
-        if (!cancelled) setInfo(status)
+        if (cancelled) return
+        setInfo(status)
+        if (typeof status.serverTime === 'number') setClockOffset(status.serverTime - Date.now())
       })
       .catch((err) => {
         if (cancelled) return
@@ -405,7 +409,9 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
     const timer = setInterval(() => {
       fetchBuildStatus(connection, jobName, buildNumber && buildNumber > 0 ? buildNumber : undefined, { sessionId })
         .then((status) => {
-          if (!cancelled) setInfo(status)
+          if (cancelled) return
+          setInfo(status)
+          if (typeof status.serverTime === 'number') setClockOffset(status.serverTime - Date.now())
         })
         .catch(() => {
           // 瞬时错误静默，下一轮重试（状态未变无需打断）
@@ -548,7 +554,7 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
               jobName
             )}
             {info?.timestamp ? ` · ${formatTime(info.timestamp)}` : ''}
-            {buildElapsedMs(info, building, now) != null ? ` · 耗时 ${formatDuration(buildElapsedMs(info, building, now))}` : ''}
+            {buildElapsedMs(info, building, now + clockOffset) != null ? ` · 耗时 ${formatDuration(buildElapsedMs(info, building, now + clockOffset))}` : ''}
           </div>
           <div className="jenkins_ops">
             {buttons.retry && (
@@ -599,7 +605,7 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
             {stages.map((stage) => {
               const live = stageStatusClass(stage.status) === 'jenkins_stageRun'
                 && typeof stage.startTimeMillis === 'number'
-              const duration = live ? now - (stage.startTimeMillis as number) : stage.durationMillis
+              const duration = live ? now + clockOffset - (stage.startTimeMillis as number) : stage.durationMillis
               return (
                 <li className={`jenkins_stage ${stageStatusClass(stage.status)}`} key={`${stage.id}-${stage.name}`}>
                   <span className="jenkins_stageDot" aria-hidden="true" />

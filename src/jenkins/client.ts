@@ -313,12 +313,19 @@ export class JenkinsClient {
   }
 
   /** build_status/info：构建信息（缺省最新构建，lastBuild 别名） */
-  getBuildInfo(jobName: string, buildNumber?: number): Promise<BuildInfo> {
-    return this.get<BuildInfo>(
-      `${this.buildPath(jobName, buildNumber)}/api/json`,
-      undefined,
-      `buildInfo:${jobName}#${buildNumber ?? 'last'}`,
-    )
+  async getBuildInfo(jobName: string, buildNumber?: number): Promise<BuildInfo> {
+    const path = `${this.buildPath(jobName, buildNumber)}/api/json`
+    try {
+      const res = await this.http.get<BuildInfo>(path)
+      const date = headerValue(res.headers, 'date')
+      const serverTime = date === undefined ? undefined : Date.parse(date)
+      return {
+        ...res.data,
+        ...(serverTime !== undefined && Number.isFinite(serverTime) ? { serverTime } : {}),
+      }
+    } catch (err) {
+      throw mapError(err, `buildInfo:${jobName}#${buildNumber ?? 'last'}`)
+    }
   }
 
   /** build_status：与 getBuildInfo 同端点（语义别名，供路由/工具按名调用） */
