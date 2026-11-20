@@ -69,6 +69,8 @@ export type BuildSubTab = 'log' | 'artifacts' | 'workspace'
 
 /** 构建中状态轮询间隔（用户 V7：状态需自动变化） */
 const STATUS_POLL_MS = 5000
+/** 仅构建中使用的耗时刷新间隔：每秒一次 */
+const DURATION_TICK_MS = 1000
 
 /**
  * 状态 → 操作按钮显隐（纯函数；docs/proposals/ui-button-states.md §2 矩阵）：
@@ -320,7 +322,7 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
   useEffect(() => {
     if (!building) return
     setNow(Date.now())
-    const timer = setInterval(() => setNow(Date.now()), STATUS_POLL_MS)
+    const timer = setInterval(() => setNow(Date.now()), DURATION_TICK_MS)
     return () => clearInterval(timer)
   }, [building])
 
