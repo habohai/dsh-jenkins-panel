@@ -29,8 +29,19 @@ const TAB_ID = 'dsh-jenkins-panel'
 export const TAB_KIND = 'dsh-jenkins-panel'
 
 /** Jenkins glyph for the right-Sidebar guide entry. */
-function JenkinsGuideIcon({ size = 18 }: { size?: number }) {
-  return <img src={JENKINS_ICON_DATA_URL} alt="" width={size} height={size} draggable={false} style={{ display: 'block', objectFit: 'contain' }} />
+function JenkinsGuideIcon({ size = 16 }: { size?: number }) {
+  const px = Math.min(size, 16)
+  return <img src={JENKINS_ICON_DATA_URL} alt="" width={px} height={px} draggable={false} style={{ display: 'block', objectFit: 'contain', borderRadius: 3 }} />
+}
+
+/** Icon + label for the tab strip; other sidebar tabs render the same shape. */
+function JenkinsTabTitle() {
+  return (
+    <>
+      <img src={JENKINS_ICON_DATA_URL} alt="" width={16} height={16} draggable={false} style={{ display: 'inline-block', verticalAlign: '-3px', marginRight: 6, borderRadius: 3, objectFit: 'contain' }} />
+      <span>Jenkins面板</span>
+    </>
+  )
 }
 
 /**
@@ -154,7 +165,20 @@ export function registerPanel(ctx: ClientContext): () => void {
     console.warn('[dsh-jenkins-panel] sidebar.right.pane.tab 槽位注册失败（面板正文降级为无）')
   }
 
+  let disposeTitle: () => void = () => {}
+  try {
+    disposeTitle = ctx.slots.inject('sidebar.right.pane.tab.title' as never, () =>
+      ctx.slots.register(
+        { name: 'sidebar.right.pane.tab.title', key: TAB_ID } as never,
+        JenkinsTabTitle as never,
+      ),
+    ) as unknown as () => void
+  } catch {
+    console.warn('[dsh-jenkins-panel] sidebar.right.pane.tab.title 槽位注册失败（页签标题降级为纯文字）')
+  }
+
   return () => {
+    disposeTitle()
     disposeBody()
     disposeType()
   }
