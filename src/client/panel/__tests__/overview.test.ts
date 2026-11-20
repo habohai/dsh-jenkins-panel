@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildListQuery, formatRecordTime, matchesFilter, overviewRecordLabel, statusDotClass, workspaceFilterNotice } from '../overview-view.js'
+import { buildListQuery, formatRecordTime, matchesFilter, overviewBranch, overviewRecordLabel, statusDotClass, workspaceFilterNotice } from '../overview-view.js'
 import type { TriggerStatus } from '../../api.js'
 
 describe('matchesFilter（状态过滤多选）', () => {
@@ -87,5 +87,19 @@ describe('overviewRecordLabel（app_name 优先）', () => {
     expect(
       overviewRecordLabel({ displayName: 'taichu-web-new.ai-dx', jobName: 'ai-dx', params: { app_name: 'taichu-web-new' } }),
     ).toBe('taichu-web-new.ai-dx')
+  })
+})
+
+
+describe('overviewBranch（第二行分支信息）', () => {
+  it('prefers GITEE_BRANCH and strips origin/refs prefixes', () => {
+    expect(overviewBranch({ params: { GITEE_BRANCH: 'dev' } })).toBe('dev')
+    expect(overviewBranch({ params: { GIT_BRANCH: 'origin/release/1.2' } })).toBe('release/1.2')
+    expect(overviewBranch({ params: { BRANCH_NAME: 'refs/heads/main' } })).toBe('main')
+  })
+
+  it('returns undefined when no branch parameter exists', () => {
+    expect(overviewBranch({ params: {} })).toBeUndefined()
+    expect(overviewBranch({ params: { GITEE_BRANCH: '   ' } })).toBeUndefined()
   })
 })

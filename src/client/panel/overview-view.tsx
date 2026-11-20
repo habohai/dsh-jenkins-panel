@@ -79,6 +79,17 @@ export function overviewRecordLabel(record: Pick<TriggerRecord, 'displayName' | 
   return `${app}.${base}`
 }
 
+/** 编译分支：兼容各 Jenkinsfile 常见的分支参数名；缺省 undefined。 */
+export function overviewBranch(record: Pick<TriggerRecord, 'params'>): string | undefined {
+  for (const key of ['GITEE_BRANCH', 'GIT_BRANCH', 'BRANCH_NAME', 'BRANCH', 'git_branch', 'branch'] as const) {
+    const raw = record.params?.[key]
+    if (typeof raw !== 'string') continue
+    const value = raw.trim().replace(/^refs\/heads\//, '').replace(/^origin\//, '')
+    if (value !== '') return value
+  }
+  return undefined
+}
+
 /** 触发时间显示（epoch ms → 本地 HH:MM:SS；无效 → '—'） */
 export function formatRecordTime(ts: number | undefined): string {
   if (ts == null || !Number.isFinite(ts) || ts <= 0) return '—'
@@ -176,6 +187,18 @@ function ConnectionSelect({
         </ul>
       )}
     </div>
+  )
+}
+
+/** Small branch glyph for the overview metadata line. */
+function BranchGlyph() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <circle cx="3" cy="2" r="1.1" stroke="currentColor" strokeWidth="1" />
+      <circle cx="3" cy="10" r="1.1" stroke="currentColor" strokeWidth="1" />
+      <circle cx="9" cy="4" r="1.1" stroke="currentColor" strokeWidth="1" />
+      <path d="M3 3.1v5.8M9 5.1v1a2.9 2.9 0 0 1-2.9 2.9H3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    </svg>
   )
 }
 
@@ -366,6 +389,12 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
                 </span>
                 <span className="jenkins_overviewBottom">
                   <span className="jenkins_connTag">{r.connection}</span>
+                  {overviewBranch(r) !== undefined && (
+                    <span className="jenkins_branchTag" title={`分支 ${overviewBranch(r)}`}>
+                      <BranchGlyph />
+                      <span className="jenkins_branchText">{overviewBranch(r)}</span>
+                    </span>
+                  )}
                   {r.workspaceName && (
                     <span className="jenkins_wsTag" title={r.workspaceName}>{r.workspaceName}</span>
                   )}

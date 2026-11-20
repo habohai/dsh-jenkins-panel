@@ -1377,6 +1377,28 @@ body[data-ds-dark-theme] {
   overflow: hidden;
 }
 
+.jenkins_branchTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  max-width: 140px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: var(--dsh-accent-soft);
+  color: var(--dsh-accent);
+  font-family: var(--dsh-font-mono);
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.jenkins_branchText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .jenkins_overviewJob {
   min-width: 0;
   overflow: hidden;
