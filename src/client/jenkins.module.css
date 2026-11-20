@@ -1385,10 +1385,6 @@ body[data-ds-dark-theme] {
   font-size: 10.5px;
 }
 
-.jenkins_row > .jenkins_rowDel {
-  margin-top: 1px;
-}
-
 /* ===== CLIENT-M2-03 总览：tab/chips/记录行/删除 ===== */
 
 .jenkins_tabs {
@@ -1481,25 +1477,6 @@ body[data-ds-dark-theme] {
 /* 排队中状态点（黄色，原型 .st.queued = warn 色；状态色保持原值） */
 .jenkins_stQueued {
   background: var(--dsh-st-warn);
-}
-
-.jenkins_rowDel {
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: var(--dsh-radius-s);
-  background: transparent;
-  color: var(--dsh-text-3);
-  cursor: pointer;
-  font-size: 11px;
-  line-height: 1;
-  transition: color 0.12s ease, background 0.12s ease;
-}
-
-.jenkins_rowDel:hover {
-  color: var(--dsh-st-fail);
-  background: rgba(224, 93, 93, 0.12);
 }
 
 /* ===== CLIENT-M2-07 设置卡片（prototype jenkins-settings 口径） ===== */

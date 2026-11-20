@@ -9,14 +9,13 @@
  *   点击 → 构建详情（BuildDetailEntry 直接映射，status 同口径 M2-06 deriveState 兜底）；
  * - 刷新联动：`visible` 门控轮询（15s 重拉当前视图）+ 手动刷新（面板头部按钮经
  *   refreshToken 传入 + 视图内刷新按钮）+ 打开构建详情强制刷新（onOpenBuild 后 reload）；
- * - 删除（可选实现并记录）：行尾删除单条 / 工具条清空本会话（triggered.delete）；
+ * - 删除只在构建详情里操作（列表不提供删除入口，避免误删）；
  *
  * 纯函数（matchesFilter / statusDotClass / formatRecordTime / buildListQuery）导出供单测。
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-  deleteTriggered,
   fetchTriggeredList,
   listConnections,
   type ConnectionInfo,
@@ -186,8 +185,6 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
   const [limit, setLimit] = useState(OVERVIEW_PAGE_SIZE)
   const [reloadTick, setReloadTick] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [opMessage, setOpMessage] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
   // V7：工作区过滤（默认「当前工作区」）+ 连接下拉过滤
   const [workspace, setWorkspace] = useState<'current' | 'all'>('current')
   const [connection, setConnection] = useState('')
@@ -262,34 +259,6 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
 
   // 操作提示自动消失（用户反馈：删除提示不应一直展示）：3s 后清除；
   // timer ref 防竞态（连续操作时旧 timer 不得清掉新消息），卸载时清理。
-  const opTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const flashMessage = (message: string) => {
-    setOpMessage(message)
-    if (opTimerRef.current) clearTimeout(opTimerRef.current)
-    opTimerRef.current = setTimeout(() => setOpMessage(null), 3000)
-  }
-  useEffect(
-    () => () => {
-      if (opTimerRef.current) clearTimeout(opTimerRef.current)
-    },
-    [],
-  )
-
-  const runDelete = async (id: string) => {
-    if (!sessionId) return
-    setBusy(true)
-    setOpMessage(null)
-    try {
-      const res = await deleteTriggered(sessionId, id)
-      flashMessage(`已删除 ${res.deleted} 条记录`)
-      reload()
-    } catch (err) {
-      flashMessage(err instanceof Error ? err.message : String(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   // 计数：优先 host 返回的基础作用域 counts（不受 status 过滤影响）；缺省回退按已加载记录统计
   const counts = useMemo(() => {
     // 会话级 counts（host 恒返回当前基础作用域分布，不受状态过滤影响）优先 —— 过滤只改数据区，不改统计。
@@ -319,7 +288,7 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
           >
             当前工作区
           </button>
-          <button type="button" className="jenkins_pillBtn" onClick={reload} disabled={busy}>
+          <button type="button" className="jenkins_pillBtn" onClick={reload}>
             刷新
           </button>
         </span>
@@ -403,17 +372,6 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
                   <span className="jenkins_overviewJob">{r.jobName}</span>
                 </span>
               </span>
-              <button
-                type="button"
-                className="jenkins_rowDel"
-                title="删除该记录"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void runDelete(r.id)
-                }}
-              >
-                ✕
-              </button>
             </div>
           ))}
           {records.length < result.total && (
@@ -426,7 +384,6 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
           {error && <div className="jenkins_tnodeError">{error}</div>}
         </>
       )}
-      {opMessage && <div className="jenkins_opMessage">{opMessage}</div>}
       <div className="jenkins_note">
         记录来自插件「触发记录注册表」：仅存元数据；默认按当前会话所在工作区聚合（可切「全部」），可按连接/状态收敛；排队中/构建中由 host 自动轮询更新（面板打开期间联动刷新）。
       </div>
