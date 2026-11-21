@@ -128,6 +128,8 @@ describe('buildAnalysisPrompt（任务书内容）', () => {
   it('包含只读约束与结构化输出要求', () => {
     const prompt = buildAnalysisPrompt(record(), 100)
     expect(prompt).toContain('build_trigger / build_retry / build_cancel / build_delete')
+    expect(prompt).toContain('建议重试')
+    expect(prompt).toContain('用户明确要求')
     expect(prompt).toContain('失败结论')
     expect(prompt).toContain('修复建议')
   })

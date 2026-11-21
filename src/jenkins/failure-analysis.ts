@@ -65,8 +65,9 @@ export function buildAnalysisPrompt(record: TriggerRecord, tailLines: number): s
     `触发参数：${params}。`,
     '请在会话中完成失败原因分析：',
     `1. 先用 jenkins_build_log（tail=${tailLines}）定位首个报错；不够时用 startLine/limit 向前回溯，或用 jenkins_build_info 查看构建参数与变更集（changeSet）。`,
-    '2. 本次只做只读排查：不要调用 build_trigger / build_retry / build_cancel / build_delete。',
-    '3. 最后输出结构化总结：① 失败结论（一句话）；② 关键报错（引用日志行）；③ 可能原因；④ 修复建议。',
+    '2. 分析阶段先只读排查：不要自动调用 build_trigger / build_retry / build_cancel / build_delete。',
+    '3. 如果判断是瞬时故障需要重试，在总结里明确给出「建议重试」或「不建议重试」；只有用户明确要求时才调用 jenkins_build_retry，不要连续自动重试。',
+    '4. 最后输出结构化总结：① 失败结论（一句话）；② 关键报错（引用日志行）；③ 可能原因；④ 修复建议。',
   ].join('\n')
 }
 
