@@ -84,7 +84,7 @@ interface Bed {
   deps: JenkinsRoutesDeps
   client: JenkinsClient
   getClient: ReturnType<typeof vi.fn>
-  triggerRegistry: { list: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }
+  triggerRegistry: { list: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; refreshNow: ReturnType<typeof vi.fn> }
   route: WebRoute
 }
 
@@ -94,6 +94,7 @@ function createBed(overrides?: Partial<JenkinsRoutesDeps>): Bed {
   const triggerRegistry = {
     list: vi.fn(() => ({ records: [], total: 0, counts: { all: 0, queued: 0, running: 0, ok: 0, fail: 0, aborted: 0 } })),
     delete: vi.fn(async () => 1),
+    refreshNow: vi.fn(async () => {}),
   }
   const listConnections = vi.fn(async () => [{ name: 'prod', isDefault: true, hasToken: true }])
   const ctx = {
@@ -572,5 +573,15 @@ describe('settings.get / settings.update / conn.test inline（CLIENT-M2-07 修�
     const res = await invoke(bed.route, 'POST', '/jenkins/api/conn.test', { connection: 'prod' })
     expect(res.payload).toMatchObject({ ok: true })
     expect(bed.getClient).toHaveBeenCalledWith('prod')
+  })
+})
+
+
+describe('triggered.list 手动刷新', () => {
+  it('refresh=true forces the registry to poll Jenkins before listing', async () => {
+    const { route, triggerRegistry } = createBed()
+    await invoke(route, 'POST', '/jenkins/api/triggered.list', { workspace: 'all', refresh: true })
+    expect(triggerRegistry.refreshNow).toHaveBeenCalledTimes(1)
+    expect(triggerRegistry.list).toHaveBeenCalledTimes(1)
   })
 })

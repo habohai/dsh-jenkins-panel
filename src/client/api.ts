@@ -386,6 +386,8 @@ export interface TriggeredListResult {
 export interface TriggeredListQuery {
   /** 触发会话（用于 workspace='current' 解析当前工作区；可选） */
   sessionId?: string
+  /** 手动刷新：先让 host registry 立即轮询 Jenkins，再返回列表 */
+  refresh?: boolean
   /** 工作区过滤：'current'（默认，当前会话工作区）| 'all'（全部） */
   workspace?: 'current' | 'all'
   /** 按连接过滤 */

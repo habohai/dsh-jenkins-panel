@@ -112,13 +112,15 @@ function dispatch(method: string, body: RouteBody, deps: JenkinsRoutesDeps): Pro
     case 'triggered.list': {
       const sessionId = typeof body.sessionId === 'string' ? body.sessionId : undefined
       const connection = typeof body.connection === 'string' ? body.connection : undefined
+      const forceRefresh = body.refresh === true
       // workspace：默认 'current'（只显示当前会话所在工作区）；'all' = 展示全部（跨工作区）
       const wantsCurrent = body.workspace !== 'all'
       const resolveWs =
         wantsCurrent && sessionId && deps.resolveWorkspaceId
           ? deps.resolveWorkspaceId(sessionId)
           : Promise.resolve(undefined)
-      return resolveWs.then((workspaceId) => {
+      return resolveWs.then(async (workspaceId) => {
+        if (forceRefresh) await deps.triggerRegistry.refreshNow()
         const status = Array.isArray(body.status) ? (body.status as TriggerStatus[]) : undefined
         const result = deps.triggerRegistry.list({
           workspaceId,

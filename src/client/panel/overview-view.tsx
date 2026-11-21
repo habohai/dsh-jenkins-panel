@@ -284,7 +284,9 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
   const [filter, setFilter] = useState<ReadonlySet<TriggerStatus>>(new Set())
   const [limit, setLimit] = useState(OVERVIEW_PAGE_SIZE)
   const [reloadTick, setReloadTick] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const forceRefreshRef = useRef(false)
   // V7：工作区过滤（默认「当前工作区」）+ 连接下拉过滤
   const [workspace, setWorkspace] = useState<'current' | 'all'>('current')
   const [connection, setConnection] = useState('')
@@ -307,11 +309,12 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
   }, [])
 
   // 加载查询：workspace='current' 需 sessionId 供 host 解析当前工作区；connection='' 不按连接过滤
-  const buildQuery = () =>
+  const buildQuery = (forceRefresh = false) =>
     fetchTriggeredList({
       sessionId: workspace === 'current' ? sessionId : undefined,
       workspace,
       connection: connection || undefined,
+      ...(forceRefresh ? { refresh: true } : {}),
       ...buildListQuery(filter, limit),
     })
 
@@ -319,13 +322,18 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
   useEffect(() => {
     if (workspace === 'current' && !sessionId) return
     let cancelled = false
+    const forceRefresh = forceRefreshRef.current
+    forceRefreshRef.current = false
     setError(null)
-    buildQuery()
+    buildQuery(forceRefresh)
       .then((res) => {
         if (!cancelled) setResult(res)
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+      })
+      .finally(() => {
+        if (!cancelled) setRefreshing(false)
       })
     return () => {
       cancelled = true
@@ -355,7 +363,11 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
     })
   }
 
-  const reload = () => setReloadTick((n) => n + 1)
+  const reload = () => {
+    forceRefreshRef.current = true
+    setRefreshing(true)
+    setReloadTick((n) => n + 1)
+  }
 
   // 操作提示自动消失（用户反馈：删除提示不应一直展示）：3s 后清除；
   // timer ref 防竞态（连续操作时旧 timer 不得清掉新消息），卸载时清理。
@@ -388,8 +400,8 @@ export function OverviewView({ sessionId, visible, refreshToken, onOpenBuild }: 
           >
             当前工作区
           </button>
-          <button type="button" className="jenkins_pillBtn" onClick={reload}>
-            刷新
+          <button type="button" className="jenkins_pillBtn" onClick={reload} disabled={refreshing}>
+            {refreshing ? '刷新中…' : '刷新'}
           </button>
         </span>
       </div>
