@@ -82,6 +82,7 @@ export function BuildLogView({ connection, jobName, buildNumber, queued, session
   // 发现终态时尊重开关（保持「开」，仅停止轮询）；跟随真正启动后清除，恢复自动停机。
   const manualEnableRef = useRef(false)
   const [copied, setCopied] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const logRef = useRef<HTMLPreElement | null>(null)
 
@@ -98,7 +99,10 @@ export function BuildLogView({ connection, jobName, buildNumber, queued, session
 
   // 加载当前视图切片（tail 或 page；排队中跳过；reload = 手动刷新）
   useEffect(() => {
-    if (queued) return
+    if (queued) {
+      setRefreshing(false)
+      return
+    }
     let cancelled = false
     setError(null)
     fetchBuildLog(connection, jobName, logQueryFor(view, { buildNumber }), { sessionId })
@@ -107,6 +111,9 @@ export function BuildLogView({ connection, jobName, buildNumber, queued, session
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+      })
+      .finally(() => {
+        if (!cancelled) setRefreshing(false)
       })
     return () => {
       cancelled = true
@@ -268,8 +275,16 @@ export function BuildLogView({ connection, jobName, buildNumber, queued, session
       </pre>
       {/* 操作按钮移到日志框下方（用户 V10 反馈），仍居右展示 */}
       <div className="jenkins_toolbar">
-        <button type="button" className="jenkins_pillBtn" onClick={() => setReload((n) => n + 1)}>
-          刷新
+        <button
+          type="button"
+          className="jenkins_pillBtn"
+          disabled={refreshing}
+          onClick={() => {
+            setRefreshing(true)
+            setReload((n) => n + 1)
+          }}
+        >
+          {refreshing ? '刷新中…' : '刷新'}
         </button>
         {view.kind === 'page' ? (
           <>
