@@ -2,6 +2,7 @@
   "name": "dsh-jenkins-panel",
   "version": "0.2.0-rc.1",
   "description": "DeepSeek Harness (dsh) plugin for Jenkins: AI-invocable jenkins_* tools (build trigger/status/log/history/artifacts, job ops), panel on the dsh official right-sidebar (triggered-build overview, multi-level job tree, build log & artifacts viewer), connection & token settings card, and automatic build-failure analysis pushed back into the triggering session.",
+  "icon": "./assets/logo.svg",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
