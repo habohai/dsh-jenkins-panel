@@ -31,7 +31,7 @@ export const TAB_KIND = 'dsh-jenkins-panel'
 /** Jenkins glyph for the right-Sidebar guide entry. */
 function JenkinsGuideIcon(_props: { size?: number }) {
   // Final visual size for the guide's branded glyph.
-  const px = 18
+  const px = 16
   return <img src={PROJECT_LOGO_DATA_URL} alt="" width={px} height={px} draggable={false} style={{ display: 'block', objectFit: 'contain', borderRadius: 4 }} />
 }
 
@@ -39,7 +39,7 @@ function JenkinsGuideIcon(_props: { size?: number }) {
 function JenkinsTabTitle() {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-      <img src={PROJECT_LOGO_DATA_URL} alt="" width={14} height={14} draggable={false} style={{ display: 'block', flex: 'none', borderRadius: 3, objectFit: 'contain' }} />
+      <img src={PROJECT_LOGO_DATA_URL} alt="" width={12} height={12} draggable={false} style={{ display: 'block', flex: 'none', borderRadius: 3, objectFit: 'contain' }} />
       <span>Jenkins面板</span>
     </span>
   )
