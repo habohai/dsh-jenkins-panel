@@ -12,7 +12,8 @@
   "files": [
     "lib",
     "dsh.plugin.json",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "assets"
   ],
   "packageManager": "pnpm@10.34.5",
   "engines": {

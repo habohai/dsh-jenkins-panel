@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/logo.svg" width="112" height="112" alt="dsh-jenkins-panel logo">
+</p>
+
 # dsh-jenkins-panel
 
 面向 Jenkins 的 [DeepSeek Harness](https://www.deepseek.com) (dsh) 插件：让 dsh 里的 AI 直接触发、跟踪、排查 Jenkins 构建，并提供一个 dsh 官方右侧栏可视化面板。
@@ -85,6 +89,7 @@ pnpm typecheck  # tsc 双 tsconfig
 - **Jenkins®** 是 [LF Charities, Inc.](https://www.linuxfoundation.org/)（Linux Foundation 关联非营利机构）的注册商标。
 - 本插件为独立的第三方工具，与 Jenkins 官方项目及 LF Charities 无隶属或背书关系；名称与图标仅用于指示对 Jenkins 的兼容与集成。
 - 插件内使用的 Jenkins 图标取自 [jenkins.io](https://www.jenkins.io/) 官方资产，依据 [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) 许可分发，署名 Jenkins 项目（来源：https://jenkins.io/ ）。
+- `assets/logo.svg` 是本项目原创的抽象标识，不使用 Jenkins 官方头像。
 
 ## License
 
