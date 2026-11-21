@@ -9,7 +9,8 @@
 - **AI 工具（host 半）**：22 个 `jenkins_*` 工具对模型可见——构建触发/状态/日志/历史/产物、任务搜索与智能解析（多候选停下询问）、队列/工作空间/连接测试等；触发成功自动写入触发记录注册表（持久化，跨重启保留）。
 - **右侧栏面板（client 半）**：接入 dsh 官方右侧栏，含总览（对话触发的构建记录 + 状态过滤实时刷新）、任务（多连接切换 + 多层级折叠树 + 搜索）、构建详情（日志 tail/分段/自动跟随、产物下载、工作空间清理）。
 - **失败自动分析**：对话触发的构建失败（FAILURE）后，自动向触发会话回推一条分析任务书，由会话内 AI 只读排查日志并输出结构化失败总结（结论 / 关键报错 / 可能原因 / 修复建议）。可在配置中关闭。
-- **构建完成主动通知**：插件触发的构建成功/取消后，默认主动回推触发会话一条短通知（任务、应用、版本、耗时、链接），模型可直接结束 turn，无需 sleep/轮询；`notify=false` 可对单次触发关闭。失败默认仍走自动分析，避免重复唤醒。
+- **构建完成主动通知**：插件触发的构建成功后默认主动回推触发会话一条短通知（任务、应用、版本、耗时、链接），模型可直接结束 turn，无需 sleep/轮询；`notify=false` 可对单次触发关闭。失败默认仍走自动分析，避免重复唤醒。
+- **触发元信息**：`jenkins_build_trigger` / `jenkins_build_retry` 立即返回 `triggerId`、`queueId`、`queueUrl`、`jobName`、`status` 和脱敏后的参数，模型不再为了拿构建链接而轮询。
 - **连接与凭据**：多 Jenkins 连接管理走 dsh 官方设置页分区；每连接 Token 存 dsh 凭据服务（credential-ref），明文不落配置。
 - **插件页配置（dsh 0.2.0+）**：在 dsh 插件管理页可直接查看并配置本插件（`plugins.bundle.config` / `plugins.row.config` 槽位）——连接管理、默认连接、失败自动分析开关，与设置页卡片同源同款；配置持久化到 profile patch（经宿主 ConfigEditor 校验/持久化）。
 
@@ -30,7 +31,7 @@ npm install github:developerdh/dsh-jenkins-panel
 
 每次版本发布（`v*` tag）会由 CI 自动构建并挂到 [Releases](https://github.com/developerdh/dsh-jenkins-panel/releases)，可下载 `dsh-jenkins-panel-<版本>.tgz` 后 `npm install <tgz 路径>` 安装。
 
-安装后在 dsh 设置页「Jenkins 连接」分区配置连接（URL/用户名/超时）与每连接 Token，重载页面即可在右侧栏与顶部栏入口看到面板。
+安装后在 dsh 设置页「Jenkins 连接」分区配置连接（URL/用户名/超时）与每连接 Token，重载页面即可在右侧栏页签中打开面板。
 
 ## 配置速览
 
@@ -51,6 +52,16 @@ npm install github:developerdh/dsh-jenkins-panel
 | `notifications.startedThresholdMs` | `30000` | 开始通知的排队阈值 |
 | `notifications.debounceMs` | `2000` | 同一会话内多构建完成通知的合并窗口 |
 
+## 触发与通知行为
+
+- 触发工具**恒不等待**，返回后模型应直接结束当前 turn；
+- 普通构建只发一条完成通知；
+- 排队超过 `startedThresholdMs`（默认 30s）才补一条「构建已开始」通知；
+- 失败默认由 `analysis` 任务书处理：模型只读查日志，给出「建议重试 / 不建议重试」；**只有用户明确要求才执行 retry，不自动连续重试**；
+- 通知只回触发它的 DSH Session，不发飞书群；
+- 会话离线时跳过并记日志；
+- 通知发送失败重试、离线补投、排队位置通知尚未实现，见 [开发计划](./docs/development-plan.md)。
+
 ## 本地开发
 
 ```sh
@@ -62,6 +73,12 @@ pnpm typecheck  # tsc 双 tsconfig
 ```
 
 挂载调试：`cordis.patch.yml` 向 profile 组合插入本插件（`dsh web --patch ./cordis.patch.yml`）。
+
+## 开发计划与已知边界
+
+- [开发计划](./docs/development-plan.md)
+- 已知缺口：通知投递重试、离线补投、排队位置通知、通知配置 UI、Jenkins CSRF crumb、手动构建跟踪。
+- 通知投递重试只重发消息，绝不重跑构建。
 
 ## 商标与归属
 
