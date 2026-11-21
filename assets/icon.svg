@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="50 48 330 380" role="img" aria-label="dsh-jenkins-panel">
+  <defs>
+    <linearGradient id="mark" x1="100" y1="96" x2="340" y2="410" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF6B5E"/>
+      <stop offset="0.48" stop-color="#FFB45C"/>
+      <stop offset="1" stop-color="#5B8CFF"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientTransform="translate(300 120) rotate(135) scale(260)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8A75" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#FF8A75" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#08101E" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <circle cx="300" cy="120" r="260" fill="url(#halo)"/>
+
+  <!-- J-shaped build pipeline, no container -->
+  <path d="M306 96V292c0 72-47 116-112 116-47 0-81-25-94-64"
+        fill="none" stroke="url(#mark)" stroke-width="44" stroke-linecap="round" filter="url(#shadow)"/>
+
+  <g filter="url(#shadow)">
+    <circle cx="306" cy="96" r="23" fill="#0B1220" stroke="#FF6B5E" stroke-width="10"/>
+    <circle cx="306" cy="96" r="7" fill="#FFE2DE"/>
+
+    <circle cx="306" cy="238" r="17" fill="#0B1220" stroke="#FFB45C" stroke-width="8"/>
+    <circle cx="306" cy="238" r="5.5" fill="#FFF0D9"/>
+
+    <circle cx="100" cy="344" r="23" fill="#0B1220" stroke="#5B8CFF" stroke-width="10"/>
+    <circle cx="100" cy="344" r="7" fill="#E5EDFF"/>
+  </g>
+</svg>

@@ -21,7 +21,7 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 
 import type { SidebarRightTabInfoFace } from '../types/dsh-0.2.0.js'
 import { PanelBody } from './panel-host.js'
-import { JENKINS_ICON_DATA_URL } from '../jenkins-icon.js'
+import { PROJECT_LOGO_DATA_URL } from '../logo.js'
 
 /** 页签类型 id（实现身份，= 正文注册的 key）；用包名，天然全局唯一 */
 const TAB_ID = 'dsh-jenkins-panel'
@@ -32,14 +32,14 @@ export const TAB_KIND = 'dsh-jenkins-panel'
 function JenkinsGuideIcon(_props: { size?: number }) {
   // Final visual size for the guide's branded glyph.
   const px = 20
-  return <img src={JENKINS_ICON_DATA_URL} alt="" width={px} height={px} draggable={false} style={{ display: 'block', objectFit: 'contain', borderRadius: 4 }} />
+  return <img src={PROJECT_LOGO_DATA_URL} alt="" width={px} height={px} draggable={false} style={{ display: 'block', objectFit: 'contain', borderRadius: 4 }} />
 }
 
 /** Icon + label for the tab strip; other sidebar tabs render the same shape. */
 function JenkinsTabTitle() {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-      <img src={JENKINS_ICON_DATA_URL} alt="" width={16} height={16} draggable={false} style={{ display: 'block', flex: 'none', borderRadius: 3, objectFit: 'contain' }} />
+      <img src={PROJECT_LOGO_DATA_URL} alt="" width={16} height={16} draggable={false} style={{ display: 'block', flex: 'none', borderRadius: 3, objectFit: 'contain' }} />
       <span>Jenkins面板</span>
     </span>
   )
