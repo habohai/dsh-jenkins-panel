@@ -40,6 +40,9 @@ export type TriggerStatus = 'queued' | 'running' | 'ok' | 'fail' | 'aborted'
 /** 失败自动分析推送状态（缺省/旧记录 undefined 视为 not_analyzed） */
 export type AnalysisState = 'not_analyzed' | 'pushed' | 'analyze_failed'
 
+/** 构建完成主动通知状态（旧记录 undefined = 不通知） */
+export type NotificationState = 'pending' | 'sent' | 'skipped' | 'failed'
+
 /** 触发记录（只存元数据；triggeredAt/statusUpdatedAt 为 epoch ms） */
 export interface TriggerRecord {
   id: string
@@ -64,6 +67,13 @@ export interface TriggerRecord {
   analysis?: AnalysisState
   /** 最近一次推送分析任务的时间（epoch ms） */
   pushedAt?: number
+  /** 触发时是否希望完成后主动回推（新记录显式设置；旧记录 undefined = 否） */
+  notify?: boolean
+  notification?: NotificationState
+  notifiedAt?: number
+  /** 终态快照（通知内容用；轮询时写入） */
+  durationMs?: number
+  buildUrl?: string
 }
 
 /** recordTrigger 入参（由 HOST-M1-06 build_trigger 成功触发后提供） */
@@ -77,6 +87,8 @@ export interface TriggerInput {
   sessionId: string
   workspaceId?: string
   workspaceName?: string
+  /** 触发工具默认为 true；false = fire-and-forget，完成后不唤醒会话 */
+  notify?: boolean
 }
 
 /** 无法解析工作区时的固定 sentinel（不参与「当前工作区」过滤，展示为「未知工作区」） */
@@ -100,7 +112,9 @@ export interface TriggerRegistryOptions extends TriggerRegistryConfig {
    * 回调错误被捕获记日志，不影响轮询循环与其余记录的刷新。
    */
   onBuildFailed?: (record: TriggerRecord) => void | Promise<void>
-  /** true 时定时轮询不受 visible 门控（失败自动分析的常驻检测：面板关闭也要能发现失败） */
+  /** 任意在途 → 终态流转（成功/失败/取消）；通知服务用，失败分析仍走 onBuildFailed */
+  onBuildTerminal?: (record: TriggerRecord, previous: TriggerStatus, next: TriggerStatus) => void | Promise<void>
+  /** true 时定时轮询不受 visible 门控（失败分析/完成通知的常驻检测） */
   watchAlways?: boolean
   /** 时钟注入（测试用）；默认 new Date */
   now?: () => Date
@@ -242,6 +256,7 @@ export class TriggerRegistry {
       sessionId: input.sessionId,
       workspaceId: input.workspaceId,
       workspaceName: input.workspaceName,
+      ...(input.notify === undefined ? {} : { notify: input.notify }),
       source: 'conversation',
       analysis: 'not_analyzed',
     }
@@ -423,6 +438,22 @@ export class TriggerRegistry {
       record.rawResult = info.result
       this.dirty = true
     }
+    if (typeof info.duration === 'number' && info.duration !== record.durationMs) {
+      record.durationMs = info.duration
+      this.dirty = true
+    }
+    if (typeof info.url === 'string' && info.url !== record.buildUrl) {
+      record.buildUrl = info.url
+      this.dirty = true
+    }
+    // 在途 → 终态：通知服务先看到完整快照；失败分析仍走独立回调。
+    if (prev !== next && (next === 'ok' || next === 'fail' || next === 'aborted') && this.options.onBuildTerminal) {
+      try {
+        await this.options.onBuildTerminal(record, prev, next)
+      } catch (err) {
+        this.logger(`[dsh-jenkins-panel] 完成通知回调异常（${record.jobName}#${record.buildNumber ?? '?'}）：${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
     // 在途 → fail 流转瞬间：通知失败自动分析（refreshRecord 只处理在途记录，prev 必为 queued/running）。
     // await 以保证 analysis 状态先于本轮落盘；错误按条捕获，不阻塞其余记录。
     if (next === 'fail' && prev !== 'fail' && this.options.onBuildFailed) {
@@ -432,6 +463,16 @@ export class TriggerRegistry {
         this.logger(`[dsh-jenkins-panel] 失败分析回调异常（${record.jobName}#${record.buildNumber ?? '?'}）：${err instanceof Error ? err.message : String(err)}`)
       }
     }
+  }
+
+  /** 标记完成通知状态（通知服务在 pending/sent/skipped/failed 时调用）。 */
+  async markNotification(id: string, state: NotificationState, at = this.now().getTime()): Promise<boolean> {
+    const record = this.records.find((r) => r.id === id)
+    if (!record) return false
+    record.notification = state
+    record.notifiedAt = at
+    await this.save()
+    return true
   }
 
   /** 标记失败分析任务已推送（failure-analysis.ts 经 onBuildFailed 回调链调用）；立即走单写链落盘 */

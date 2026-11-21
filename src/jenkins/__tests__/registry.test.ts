@@ -414,6 +414,37 @@ describe('持久化容错与门控', () => {
   })
 })
 
+describe('完成通知钩子（onBuildTerminal）', () => {
+  it('fires once on a running → SUCCESS transition and snapshots duration/url', async () => {
+    const onBuildTerminal = vi.fn(async () => {})
+    const info: Partial<BuildInfo> = { building: true }
+    const client = fakeClient({ getBuildStatus: vi.fn(async () => build(info)) })
+    const registry = await createTriggerRegistry(makeOptions({ getClient: async () => client, onBuildTerminal }))
+    const record = await registry.recordTrigger(recordInput({ buildNumber: 5, notify: true }))
+
+    await registry.pollOnce()
+    expect(onBuildTerminal).not.toHaveBeenCalled()
+
+    info.building = false
+    info.result = 'SUCCESS'
+    info.duration = 123_000
+    info.url = 'https://jenkins.example.com/job/deploy/5/'
+    await registry.pollOnce()
+    expect(onBuildTerminal).toHaveBeenCalledTimes(1)
+    expect(onBuildTerminal).toHaveBeenCalledWith(
+      expect.objectContaining({ id: record.id, status: 'ok', notify: true, durationMs: 123_000, buildUrl: info.url }),
+      'running',
+      'ok',
+    )
+
+    await registry.pollOnce()
+    expect(onBuildTerminal).toHaveBeenCalledTimes(1)
+    const persisted = (await diskRecords())[0]
+    expect(persisted.durationMs).toBe(123_000)
+    expect(persisted.buildUrl).toBe(info.url)
+  })
+})
+
 describe('失败自动分析钩子（onBuildFailed / rawResult / analysis）', () => {
   it('fires onBuildFailed exactly once on in-flight → fail transition and stores rawResult', async () => {
     const onBuildFailed = vi.fn(async () => {})

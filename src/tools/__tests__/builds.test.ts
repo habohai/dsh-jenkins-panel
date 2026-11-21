@@ -46,6 +46,7 @@ describe('jenkins_build_trigger', () => {
       displayName: '部署',
       queueId: 42,
       params: { BRANCH: 'fix' },
+      notify: true,
       sessionId: 'session-1',
       workspaceId: UNKNOWN_WORKSPACE_ID,
       workspaceName: undefined,
@@ -204,6 +205,7 @@ describe('build_cancel / delete / retry', () => {
     bed.client.retryBuild = vi.fn(async () => ({ queueUrl: 'https://jenkins.example.com/queue/item/8/' }))
     const value = await runTool(byName.get('jenkins_build_retry')!, { jobName: 'project/deploy' }) as Record<string, unknown>
     expect(value).toEqual({ queueId: 8 })
+    expect(bed.recordTrigger).toHaveBeenCalledWith(expect.objectContaining({ queueId: 8, notify: true }))
     expect('buildNumber' in value).toBe(false)
     expect('status' in value).toBe(false)
   })

@@ -36,6 +36,8 @@ export interface JenkinsToolsDeps {
   sessionIdOf?: (exec: ToolRunContext) => string | undefined
   /** 会话 → 工作区 { id, name }（最佳努力；拿不到/抛错 → 归 sentinel UNKNOWN_WORKSPACE_ID） */
   workspaceOf?: (sessionId: string) => Promise<{ id: string; name: string } | undefined>
+  /** 构建完成后主动通知触发会话的默认值（notifications.enabled） */
+  notifyDefault?: boolean
 }
 
 /** 文本内容块（output.render 用；ContentBlock 文本形态，无需显式类型导入） */

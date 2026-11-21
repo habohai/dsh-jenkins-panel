@@ -29,6 +29,7 @@ import {
 
 import { clientFor, createConnectionRegistry, listConnections, type JenkinsConnectionMeta } from './jenkins/connection.js'
 import { createFailureAnalysis, type AnalysisAgentLike } from './jenkins/failure-analysis.js'
+import { createBuildNotifications } from './jenkins/notifications.js'
 import { migrateLegacyDataDir } from './jenkins/legacy-migration.js'
 import { createTriggerRegistry, registryFile, type TriggerRecord } from './jenkins/registry.js'
 import { resolveWorkspaceIdOfSession, type WorkspaceRegistryLike } from './jenkins/workspace-resolve.js'
@@ -73,6 +74,16 @@ export interface ConfigShape {
     /** 初始拉取日志的行数提示（注入会话的分析任务书带给模型） */
     tailLines: number
   }
+  notifications: {
+    /** 构建完成主动通知（默认开；会话在线时回推一条 notice） */
+    enabled: boolean
+    onSuccess: boolean
+    /** 失败默认走 analysis，避免重复唤醒 */
+    onFailure: boolean
+    onAborted: boolean
+    /** 同一会话内多构建完成通知的合并窗口 */
+    debounceMs: number
+  }
 }
 
 /** 配置即 Schemastery Schema：非法配置 fail-loud（architecture §2.1/§6 双重校验之一：字符集） */
@@ -105,6 +116,14 @@ export const Config: Schema<ConfigShape> = Schema.object({
   analysis: Schema.object({
     enabled: Schema.boolean().default(true), // 默认开：失败后自动在触发会话里分析原因
     tailLines: Schema.number().default(100), // 分析任务书建议的首拉日志行数
+  }),
+  // 构建完成主动通知（成功/取消默认回推；失败仍走 analysis，避免双重唤醒）
+  notifications: Schema.object({
+    enabled: Schema.boolean().default(true),
+    onSuccess: Schema.boolean().default(true),
+    onFailure: Schema.boolean().default(false),
+    onAborted: Schema.boolean().default(false),
+    debounceMs: Schema.number().default(2_000),
   }),
 })
 
@@ -219,13 +238,16 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
   //   analysis.enabled（默认开）双职责：注册表 watchAlways 常驻轮询（面板关闭也能发现失败）
   //   + 在途→fail 流转瞬间回调分析推送器（handleBuildFailed 指向后置赋值，轮询定时器晚于此生效）
   let handleBuildFailed: ((record: TriggerRecord) => Promise<void>) | undefined
+  const notifierRef: { current?: ReturnType<typeof createBuildNotifications> } = {}
   const triggerRegistry = await createTriggerRegistry({
     file: registryFile(profileDataDir()),
     maxPerSession: config.registry.maxPerSession,
     ttlDays: config.registry.ttlDays,
     pollIntervalMs: config.registry.pollIntervalMs,
     getClient,
-    watchAlways: config.analysis.enabled,
+    // 失败分析或完成通知任一开启，都要在面板关闭时继续轮询。
+    watchAlways: config.analysis.enabled || config.notifications.enabled,
+    onBuildTerminal: (record, previous, next) => notifierRef.current?.handle(record, previous, next),
     onBuildFailed: config.analysis.enabled
       ? (record) => (handleBuildFailed ? handleBuildFailed(record) : undefined)
       : undefined,
@@ -236,10 +258,19 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
       tailLines: config.analysis.tailLines,
     }).handle
   }
+  // 构建完成主动通知（只回 DSH Session；失败默认仍走 analysis，避免重复唤醒）
+  notifierRef.current = createBuildNotifications({
+    ...config.notifications,
+    registry: triggerRegistry,
+    getAgent,
+  })
   // ⑦ 轮询（在途记录状态流转）+ 每日 sweep；卸载时释放定时器
   ctx.effect(() => {
     triggerRegistry.start()
-    return () => triggerRegistry.dispose()
+    return () => {
+      notifierRef.current?.dispose()
+      triggerRegistry.dispose()
+    }
   }, 'dsh-jenkins-panel: trigger registry lifecycle')
   // ⑧ 工具注册（triggerRegistry 接线：build_trigger/retry 成功时写总览记录 + 工作区解析；
   //   listConnections 接线：jenkins_connection_list 枚举连接清单，与 conn.list 路由同源）
@@ -248,6 +279,7 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
     getClient,
     triggerRegistry,
     workspaceOf,
+    notifyDefault: config.notifications.enabled,
     listConnections: () => listConnections(registry, ctx.credentials),
   })
   // ⑨ /jenkins/api/* 路由（HOST-M1-09）：面板取数；workspace='current' 解析当前工作区，conn.list 数据源 = listConnections 绑定
