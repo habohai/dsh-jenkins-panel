@@ -81,6 +81,10 @@ export interface ConfigShape {
     /** 失败默认走 analysis，避免重复唤醒 */
     onFailure: boolean
     onAborted: boolean
+    /** 排队超过阈值的构建开始时回推（正常快速开始不打扰） */
+    onStarted: boolean
+    /** 排队多久后才发开始通知 */
+    startedThresholdMs: number
     /** 同一会话内多构建完成通知的合并窗口 */
     debounceMs: number
   }
@@ -123,6 +127,8 @@ export const Config: Schema<ConfigShape> = Schema.object({
     onSuccess: Schema.boolean().default(true),
     onFailure: Schema.boolean().default(false),
     onAborted: Schema.boolean().default(false),
+    onStarted: Schema.boolean().default(true),
+    startedThresholdMs: Schema.number().default(30_000),
     debounceMs: Schema.number().default(2_000),
   }),
 })
@@ -247,6 +253,7 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
     getClient,
     // 失败分析或完成通知任一开启，都要在面板关闭时继续轮询。
     watchAlways: config.analysis.enabled || config.notifications.enabled,
+    onBuildStarted: (record) => notifierRef.current?.handleStarted(record),
     onBuildTerminal: (record, previous, next) => notifierRef.current?.handle(record, previous, next),
     onBuildFailed: config.analysis.enabled
       ? (record) => (handleBuildFailed ? handleBuildFailed(record) : undefined)

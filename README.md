@@ -47,6 +47,8 @@ npm install github:developerdh/dsh-jenkins-panel
 | `notifications.onSuccess` | `true` | 成功构建回推通知 |
 | `notifications.onFailure` | `false` | 失败回推（默认走 analysis，避免双唤醒） |
 | `notifications.onAborted` | `false` | 取消构建回推 |
+| `notifications.onStarted` | `true` | 排队超过阈值后回推构建开始 |
+| `notifications.startedThresholdMs` | `30000` | 开始通知的排队阈值 |
 | `notifications.debounceMs` | `2000` | 同一会话内多构建完成通知的合并窗口 |
 
 ## 本地开发

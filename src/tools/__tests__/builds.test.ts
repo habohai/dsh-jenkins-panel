@@ -60,11 +60,9 @@ describe('jenkins_build_trigger', () => {
     bed.client.triggerBuild = vi.fn(async () => ({ queueUrl: 'https://jenkins.example.com/queue/item/42/' }))
 
     const value = await runTool(byName.get('jenkins_build_trigger')!, { jobName: 'project/deploy' }) as Record<string, unknown>
-    // 回归（用户报障）：无 wait 时 buildNumber/status 恒缺省，必须被收口剔除，
-    // 否则 dsh-tools snapshotJsonValue 校验失败 → "value is not lossless JSON"
-    expect(value).toEqual({ queueId: 42 })
+    // 触发后立即返回可关联信息；buildNumber 仍不在触发时同步等待/查询。
+    expect(value).toMatchObject({ queueId: 42, triggerId: 'rec-1', status: 'queued', notify: true })
     expect('buildNumber' in value).toBe(false)
-    expect('status' in value).toBe(false)
   })
 
   it('wait 已取消（用户要求）：即使传入 wait 也无等待，触发即返回 { queueId }', async () => {
@@ -82,7 +80,7 @@ describe('jenkins_build_trigger', () => {
       pollInterval: 1,
       timeout: 10,
     }) as Record<string, unknown>
-    expect(value).toEqual({ queueId: 7 })
+    expect(value).toMatchObject({ queueId: 7, triggerId: 'rec-1', status: 'queued' })
     expect(bed.client.listQueue).not.toHaveBeenCalled()
     expect(bed.client.getBuildStatus).not.toHaveBeenCalled()
     expect(bed.recordTrigger).toHaveBeenCalledWith(expect.objectContaining({ queueId: 7 }))
@@ -186,7 +184,7 @@ describe('build_cancel / delete / retry', () => {
   it('retry calls /rebuild and writes registry record', async () => {
     const { bed, byName } = tools()
     bed.client.getAllJobsRecursive = vi.fn(async () => JOBS)
-    const value = await runTool(byName.get('jenkins_build_retry')!, { jobName: 'project/deploy' })
+    const value = await runTool(byName.get('jenkins_build_retry')!, { jobName: 'project/deploy' }) as Record<string, unknown>
     // wait 取消：不再预取 getBuildInfo
     expect(bed.client.getBuildInfo).not.toHaveBeenCalled()
     expect(bed.client.retryBuild).toHaveBeenCalledWith('project/deploy')
@@ -196,7 +194,8 @@ describe('build_cancel / delete / retry', () => {
       displayName: '部署',
       sessionId: 'session-1',
     }))
-    expect(value).toEqual({}) // 无 queueUrl 时 queueId 缺省 → lossless 空对象
+    expect(value).toMatchObject({ triggerId: 'rec-1', jobName: 'project/deploy', status: 'queued', notify: true })
+    expect('queueId' in value).toBe(false)
   })
 
   it('retry queueUrl 解析出 queueId 并返回 { queueId }', async () => {
@@ -204,10 +203,9 @@ describe('build_cancel / delete / retry', () => {
     bed.client.getAllJobsRecursive = vi.fn(async () => JOBS)
     bed.client.retryBuild = vi.fn(async () => ({ queueUrl: 'https://jenkins.example.com/queue/item/8/' }))
     const value = await runTool(byName.get('jenkins_build_retry')!, { jobName: 'project/deploy' }) as Record<string, unknown>
-    expect(value).toEqual({ queueId: 8 })
+    expect(value).toMatchObject({ queueId: 8, triggerId: 'rec-1', status: 'queued', notify: true })
     expect(bed.recordTrigger).toHaveBeenCalledWith(expect.objectContaining({ queueId: 8, notify: true }))
     expect('buildNumber' in value).toBe(false)
-    expect('status' in value).toBe(false)
   })
 
   it('retry wait 已取消（用户要求）：硬传 wait 也不等待、不轮询', async () => {
@@ -217,7 +215,7 @@ describe('build_cancel / delete / retry', () => {
     const value = await runTool(byName.get('jenkins_build_retry')!, { jobName: 'project/deploy', wait: true, pollInterval: 1, timeout: 10 }) as Record<string, unknown>
     expect(bed.client.getBuildStatus).not.toHaveBeenCalled()
     expect(bed.recordTrigger).toHaveBeenCalledWith(expect.objectContaining({ jobName: 'project/deploy' }))
-    expect(value).toEqual({})
+    expect(value).toMatchObject({ triggerId: 'rec-1', status: 'queued', notify: true })
   })
 })
 
@@ -259,5 +257,26 @@ describe('缺口补齐（FIN-M3-02）', () => {
     bed.client.getAllJobsRecursive = vi.fn(async () => [...JOBS, { name: 'api-gateway', fullName: 'devops/api-gateway/build', displayName: '网关构建', url: 'u4' }])
     await runTool(byName.get('jenkins_build_status')!, { jobName: 'api-gateway' })
     expect(bed.client.getBuildStatus).toHaveBeenCalledWith('devops/api-gateway/build', undefined)
+  })
+})
+
+describe('trigger response metadata', () => {
+  it('returns triggerId/queueUrl and redacts secret-like parameters', async () => {
+    const { bed, byName } = tools()
+    bed.client.getAllJobsRecursive = vi.fn(async () => JOBS)
+    bed.client.getJobParams = vi.fn(async () => [])
+    bed.client.triggerBuild = vi.fn(async () => ({ queueUrl: 'https://jenkins.example.com/queue/item/77/' }))
+    const value = await runTool(byName.get('jenkins_build_trigger')!, {
+      jobName: 'project/deploy',
+      parameters: { TOKEN: 'super-secret', app_name: 'demo' },
+    }) as Record<string, unknown>
+    expect(value).toMatchObject({
+      triggerId: 'rec-1',
+      queueId: 77,
+      queueUrl: 'https://jenkins.example.com/queue/item/77/',
+      status: 'queued',
+      notify: true,
+      params: { TOKEN: '***', app_name: 'demo' },
+    })
   })
 })

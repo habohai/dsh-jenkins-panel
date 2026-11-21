@@ -13,6 +13,7 @@ import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 
 import { getAllBuildHistory } from '../jenkins/all-build-history.js'
 import type { BuildResult, ParameterDefinition } from '../jenkins/types.js'
+import { redactParams } from '../jenkins/params.js'
 import { asJson, queueIdFromUrl, recordTriggered, resolveJobPath, sleep, textContent, type JenkinsToolsDeps } from './shared.js'
 
 /** 参数合并：默认值（非空）打底 + 模型提供值覆盖（校验/合并口径） */
@@ -38,7 +39,7 @@ export function defineBuildTools(deps: JenkinsToolsDeps): ToolDefinition[] {
     defineTool({
       name: 'jenkins_build_trigger',
       description:
-        '触发Jenkins任务构建。内部顺序：解析名称 → 现拉参数 → 校验/合并 → 触发；成功后写入触发记录。**恒不等待**，立即返回 { queueId? }。触发后可以直接结束本轮：插件会在构建完成时主动向当前会话回推完成通知（notify=false 可关闭），无需 sleep/轮询；构建状态也可用 jenkins_build_status 查询。',
+        '触发Jenkins任务构建。内部顺序：解析名称 → 现拉参数 → 校验/合并 → 触发；成功后写入触发记录。**恒不等待**，立即返回。触发后请直接结束本轮：禁止 sleep、禁止轮询等待构建号/URL；插件会在构建开始（排队超过 30s）和完成时主动向当前会话回推通知（notify=false 可关闭）。',
       parameters: {
         connection: { type: 'string', description: '连接名（缺省走默认连接）' },
         jobName: { type: 'string', description: '任务名或路径（多候选时停下询问）', required: true },
@@ -46,7 +47,7 @@ export function defineBuildTools(deps: JenkinsToolsDeps): ToolDefinition[] {
         delay: { type: 'integer', description: '延迟触发（秒）' },
         notify: { type: 'boolean', description: '构建完成时主动回推当前会话（默认 true；fire-and-forget 可设 false）' },
       },
-      output: { schema: { type: 'json', description: '{ queueId? }' }, render: (_args, value) => textContent(value) },
+      output: { schema: { type: 'json', description: '{ triggerId?, queueId?, queueUrl?, jobName, displayName, status, notify, params }' }, render: (_args, value) => textContent(value) },
       async execute(args, exec) {
         const client = await deps.getClient(args.connection)
         const { fullName, displayName } = await resolveJobPath(client, args.jobName)
@@ -56,8 +57,8 @@ export function defineBuildTools(deps: JenkinsToolsDeps): ToolDefinition[] {
         if (args.delay && args.delay > 0) await sleep(args.delay * 1000)
         const { queueUrl } = await client.triggerBuild(fullName, merged)
         const queueId = queueIdFromUrl(queueUrl)
-        // 用户要求：取消 wait——恒不等待，触发即返回（buildNumber/status 不再输出）
-        await recordTriggered(deps, exec, {
+        // 用户要求：取消 wait——恒不等待，触发即返回。triggerId 供后续通知幂等关联。
+        const record = await recordTriggered(deps, exec, {
           connection: args.connection ?? deps.registry.defaultConnection,
           jobName: fullName,
           displayName: displayName ?? fullName,
@@ -65,7 +66,16 @@ export function defineBuildTools(deps: JenkinsToolsDeps): ToolDefinition[] {
           params: merged,
           notify,
         })
-        return asJson({ queueId })
+        return asJson({
+          ...(record === undefined ? {} : { triggerId: record.id }),
+          ...(queueId === undefined ? {} : { queueId }),
+          ...(queueUrl === undefined ? {} : { queueUrl }),
+          jobName: fullName,
+          displayName: displayName ?? fullName,
+          status: 'queued',
+          notify,
+          params: redactParams(merged),
+        })
       },
     }),
 
@@ -177,21 +187,21 @@ export function defineBuildTools(deps: JenkinsToolsDeps): ToolDefinition[] {
     defineTool({
       name: 'jenkins_build_retry',
       description:
-        '重试Jenkins构建（复用上次构建参数，POST /rebuild；成功后写触发记录）。**恒不等待**，立即返回 { queueId? }；完成时默认主动回推当前会话（notify=false 可关闭），无需 sleep/轮询。',
+        '重试Jenkins构建（复用上次构建参数，POST /rebuild；成功后写触发记录）。**恒不等待**，立即返回。禁止 sleep/轮询；完成时默认主动回推当前会话（notify=false 可关闭）。',
       parameters: {
         connection: { type: 'string', description: '连接名（缺省走默认连接）' },
         jobName: { type: 'string', description: '任务名或路径', required: true },
         notify: { type: 'boolean', description: '构建完成时主动回推当前会话（默认 true）' },
       },
-      output: { schema: { type: 'json', description: '{ queueId? }' }, render: (_args, value) => textContent(value) },
+      output: { schema: { type: 'json', description: '{ triggerId?, queueId?, queueUrl?, jobName, displayName, status, notify, params }' }, render: (_args, value) => textContent(value) },
       async execute(args, exec) {
         const client = await deps.getClient(args.connection)
         const { fullName, displayName } = await resolveJobPath(client, args.jobName)
         const notify = deps.notifyDefault !== false && args.notify !== false
         const { queueUrl } = await client.retryBuild(fullName)
         const queueId = queueIdFromUrl(queueUrl)
-        // 用户要求：retry 同 trigger 取消 wait——恒不等待，重试即返回（buildNumber/status 不再输出）
-        await recordTriggered(deps, exec, {
+        // 用户要求：retry 同 trigger 取消 wait——恒不等待，重试即返回。
+        const record = await recordTriggered(deps, exec, {
           connection: args.connection ?? deps.registry.defaultConnection,
           jobName: fullName,
           displayName: displayName ?? fullName,
@@ -199,7 +209,16 @@ export function defineBuildTools(deps: JenkinsToolsDeps): ToolDefinition[] {
           params: {},
           notify,
         })
-        return asJson({ queueId })
+        return asJson({
+          ...(record === undefined ? {} : { triggerId: record.id }),
+          ...(queueId === undefined ? {} : { queueId }),
+          ...(queueUrl === undefined ? {} : { queueUrl }),
+          jobName: fullName,
+          displayName: displayName ?? fullName,
+          status: 'queued',
+          notify,
+          params: {},
+        })
       },
     }),
 

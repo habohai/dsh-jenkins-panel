@@ -3,7 +3,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { buildCompletionPrompt, createBuildNotifications, notificationVersion } from '../notifications.js'
+import { buildCompletionPrompt, buildStartedPrompt, createBuildNotifications, notificationVersion } from '../notifications.js'
 import type { TriggerRecord, TriggerRegistry } from '../registry.js'
 
 function record(overrides: Partial<TriggerRecord> = {}): TriggerRecord {
@@ -28,7 +28,8 @@ function record(overrides: Partial<TriggerRecord> = {}): TriggerRecord {
 
 function setup(overrides: Partial<Parameters<typeof createBuildNotifications>[0]> = {}) {
   const markNotification = vi.fn(async () => true)
-  const registry = { markNotification } as unknown as TriggerRegistry
+  const markStartedNotification = vi.fn(async () => true)
+  const registry = { markNotification, markStartedNotification } as unknown as TriggerRegistry
   const followup = vi.fn()
   const getAgent = vi.fn(() => ({ followup }))
   const notifier = createBuildNotifications({
@@ -36,13 +37,15 @@ function setup(overrides: Partial<Parameters<typeof createBuildNotifications>[0]
     onSuccess: true,
     onFailure: false,
     onAborted: false,
+    onStarted: true,
+    startedThresholdMs: 30_000,
     debounceMs: 10,
     registry,
     getAgent,
     logger: () => {},
     ...overrides,
   })
-  return { notifier, markNotification, followup, getAgent }
+  return { notifier, markNotification, markStartedNotification, followup, getAgent }
 }
 
 beforeEach(() => { vi.useFakeTimers() })
@@ -96,8 +99,9 @@ describe('构建完成通知', () => {
 
 describe('通知文案', () => {
   it('展示 app、版本和耗时，并提醒不要自动重试', () => {
-    const text = buildCompletionPrompt([record()])
+    const text = buildCompletionPrompt([record({ failureStage: 'docker_login' })])
     expect(text).toContain('taichu-web-new.ai-dx')
+    expect(text).toContain('失败阶段: docker_login')
     expect(text).toContain('分支 dev')
     expect(text).toContain('2m 34s')
     expect(text).toContain('不要再次触发构建')
@@ -107,5 +111,37 @@ describe('通知文案', () => {
     expect(notificationVersion({ params: { TAG_NAME: 'v1.2.3', GITEE_BRANCH: 'dev' } })).toBe('Tag v1.2.3')
     expect(notificationVersion({ params: { GITEE_BRANCH: 'origin/dev' } })).toBe('分支 dev')
     expect(notificationVersion({ params: { GIT_COMMIT: 'abcdef1234567890' } })).toBe('Commit abcdef12')
+  })
+})
+
+
+describe('构建开始通知（排队阈值）', () => {
+  it('排队超过阈值才发，且只发一次', async () => {
+    vi.setSystemTime(100_000)
+    const { notifier, followup, markStartedNotification } = setup()
+    const started = record({ id: 'started', triggeredAt: 60_000, startedNotification: undefined })
+    await notifier.handleStarted(started)
+    expect(followup).toHaveBeenCalledTimes(1)
+    expect(markStartedNotification).toHaveBeenCalledWith('started', 'sent')
+    const text = (followup.mock.calls[0]![0] as { content: Array<{ text: string }> }).content[0]!.text
+    expect(text).toContain('triggerId: started')
+    expect(text).toContain('构建在排队约 40 秒后已开始')
+  })
+
+  it('快速开始的构建不发，标记 skipped', async () => {
+    vi.setSystemTime(100_000)
+    const { notifier, followup, markStartedNotification } = setup()
+    await notifier.handleStarted(record({ id: 'fast', triggeredAt: 99_000, startedNotification: undefined }))
+    expect(followup).not.toHaveBeenCalled()
+    expect(markStartedNotification).toHaveBeenCalledWith('fast', 'skipped')
+  })
+})
+
+describe('开始通知文案', () => {
+  it('包含 triggerId、构建号和阈值说明', () => {
+    const text = buildStartedPrompt(record())
+    expect(text).toContain('triggerId: r1')
+    expect(text).toContain('#5489')
+    expect(text).toContain('不是要求轮询')
   })
 })

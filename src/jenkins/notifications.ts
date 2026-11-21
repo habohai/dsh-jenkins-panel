@@ -11,6 +11,7 @@
  */
 import { createUserMessage, type ContentBlock, type MessageSourceMap, type UserMessage } from '@deepseek-ai/dsh-llm'
 
+import { redactParams } from './params.js'
 import type { TriggerRecord, TriggerRegistry, TriggerStatus } from './registry.js'
 
 /** 活跃 agent 的最小面（与 failure-analysis 一致） */
@@ -23,6 +24,8 @@ export interface BuildNotificationsOptions {
   onSuccess: boolean
   onFailure: boolean
   onAborted: boolean
+  onStarted: boolean
+  startedThresholdMs: number
   debounceMs: number
   registry: TriggerRegistry
   getAgent: (sessionId: string) => NotificationAgentLike | undefined
@@ -30,6 +33,8 @@ export interface BuildNotificationsOptions {
 }
 
 export interface BuildNotifications {
+  /** registry 的 onBuildStarted 入口（排队超过阈值的构建才通知） */
+  handleStarted(record: TriggerRecord): Promise<void>
   /** registry 的 onBuildTerminal 入口 */
   handle(record: TriggerRecord, previous: TriggerStatus, next: TriggerStatus): Promise<void>
   /** 插件卸载：清 timer，pending 标记 skipped（不阻塞） */
@@ -78,7 +83,26 @@ export function buildCompletionLine(record: TriggerRecord): string {
   const duration = formatNotificationDuration(record.durationMs)
   const build = record.buildNumber != null ? `#${record.buildNumber}` : ''
   const parts = [title, build, version, result, duration !== '' ? `耗时 ${duration}` : ''].filter((part) => part !== '')
-  return `- ${parts.join(' · ')}${record.buildUrl ? `\n  ${record.buildUrl}` : ''}`
+  return `- ${parts.join(' · ')}${record.buildUrl ? `\n  ${record.buildUrl}` : ''}${record.failureStage ? `\n  失败阶段: ${record.failureStage}` : ''}`
+}
+
+/** 排队超过阈值的构建开始通知正文。 */
+export function buildStartedPrompt(record: TriggerRecord): string {
+  const app = typeof record.params?.app_name === 'string' ? record.params.app_name.trim() : ''
+  const title = app !== '' ? `${app}.${record.displayName}` : record.displayName
+  const version = notificationVersion(record)
+  const queueSeconds = Math.max(0, Math.round((Date.now() - record.triggeredAt) / 1000))
+  return [
+    '[构建开始通知 | dsh-jenkins-panel]',
+    `构建在排队约 ${queueSeconds} 秒后已开始：`,
+    `- triggerId: ${record.id}`,
+    `- 任务: ${title}${record.buildNumber != null ? ` #${record.buildNumber}` : ''}`,
+    ...(version !== '' ? [`- 版本: ${version}`] : []),
+    ...(record.buildUrl !== undefined ? [`- 链接: ${record.buildUrl}`] : []),
+    ...(Object.keys(redactParams(record.params)).length > 0 ? [`- 参数: ${JSON.stringify(redactParams(record.params))}`] : []),
+    '',
+    '这是开始通知，不是要求轮询。构建完成后会再发完成通知。',
+  ].join('\n')
 }
 
 /** 注入消息正文（失败仍由 failure-analysis 另发，不在这里重复） */
@@ -87,6 +111,7 @@ export function buildCompletionPrompt(records: readonly TriggerRecord[]): string
     '[构建完成通知 | dsh-jenkins-panel]',
     '你触发的 Jenkins 构建已结束：',
     ...records.map(buildCompletionLine),
+    ...records.map((record) => `- triggerId: ${record.id}`),
     '',
     '这是完成通知，不是自动重试指令。',
     '需要查看日志时调用 jenkins_build_log（可按 tail/分段读取）；',
@@ -148,6 +173,41 @@ export function createBuildNotifications(options: BuildNotificationsOptions): Bu
   }
 
   return {
+    async handleStarted(record): Promise<void> {
+      if (disposed) return
+      if (!options.enabled || !options.onStarted || record.notify !== true) return
+      if (record.startedNotification !== undefined) return
+      const waited = Date.now() - record.triggeredAt
+      if (waited < options.startedThresholdMs) {
+        await options.registry.markStartedNotification(record.id, 'skipped')
+        return
+      }
+      const agent = (() => {
+        try {
+          return options.getAgent(record.sessionId)
+        } catch {
+          return undefined
+        }
+      })()
+      if (agent === undefined || typeof agent.followup !== 'function') {
+        logger(`[dsh-jenkins-panel] 会话不在线，跳过开始通知：sessionId=${record.sessionId}`)
+        await options.registry.markStartedNotification(record.id, 'skipped')
+        return
+      }
+      const source: MessageSourceMap['jenkins-panel'] = {
+        kind: 'jenkins-panel',
+        form: 'notice',
+        summary: `Jenkins 构建已开始：${record.displayName}`.slice(0, 120),
+      }
+      try {
+        agent.followup(createUserMessage({ content: [{ type: 'text', text: buildStartedPrompt(record) }], source }))
+        await options.registry.markStartedNotification(record.id, 'sent')
+      } catch (err) {
+        logger(`[dsh-jenkins-panel] 开始通知注入失败：${String(err)}`)
+        await options.registry.markStartedNotification(record.id, 'failed')
+      }
+    },
+
     async handle(record, _previous, next): Promise<void> {
       if (disposed) return
       if (!options.enabled || record.notify !== true) return

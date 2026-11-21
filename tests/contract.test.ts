@@ -216,7 +216,7 @@ describe('§3 工具返回结构对拍（mock 客户端）', () => {
     expect((historyAll.builds as Array<Record<string, unknown>>)[0]).toMatchObject({ jobFullName: 'project/deploy', number: 9 })
 
     const retry = (await runTool(byName.get('jenkins_build_retry')!, { jobName: 'deploy' })) as Record<string, unknown>
-    expect(retry).toEqual({}) // 无 queueUrl → queueId 缺省（lossless 收口剔除 undefined）
+    expect(retry).toMatchObject({ triggerId: 'rec-1', jobName: 'project/deploy', status: 'queued', notify: true }) // 无 queueUrl → queueId 缺省
 
     const cancel = (await runTool(byName.get('jenkins_build_cancel')!, { jobName: 'deploy', buildNumber: 5 })) as Record<string, unknown>
     expect(cancel).toMatchObject({ ok: true })
@@ -539,10 +539,10 @@ describe('偏差登记（FIN-M3-02 对拍发现；不改权威文档，交回流
     bed.client.getAllJobsRecursive = vi.fn(async () => [JOB])
     const byName = new Map(defineBuildTools(bed.deps).map((t) => [t.name, t]))
     const empty = await runTool(byName.get('jenkins_build_retry')!, { jobName: 'deploy' })
-    expect(empty).toEqual({}) // 无 Location → queueId 缺省（lossless 收口剔除 undefined）
+    expect(empty).toMatchObject({ jobName: 'project/deploy', status: 'queued', notify: true }) // 无 Location → queueId 缺省
     bed.client.retryBuild = vi.fn(async () => ({ queueUrl: 'https://jenkins.example.com/queue/item/9/' }))
     const withQueue = await runTool(byName.get('jenkins_build_retry')!, { jobName: 'deploy' }) as Record<string, unknown>
-    expect(withQueue).toEqual({ queueId: 9 })
+    expect(withQueue).toMatchObject({ queueId: 9, status: 'queued', notify: true })
   })
 
   it('D4（既有登记）：QueueItem.executable 为 Jenkins 原始字段补入（docs §2.4 未列），已登记 HOST-M1-08 变更记录待 FIN-M3-03 回流', () => {

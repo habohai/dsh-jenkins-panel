@@ -414,6 +414,23 @@ describe('持久化容错与门控', () => {
   })
 })
 
+describe('构建开始钩子（onBuildStarted）', () => {
+  it('fires once when a queued record resolves to running', async () => {
+    const onBuildStarted = vi.fn(async () => {})
+    const client = fakeClient({
+      getQueueItem: vi.fn(async () => ({ id: 7, task: { name: 'deploy', url: 'u' }, stuck: false, blocked: false, buildable: true, timestamp: 1, executable: { number: 11, url: 'u' } })),
+      getBuildStatus: vi.fn(async () => build({ building: true, timestamp: 1234 })),
+    })
+    const registry = await createTriggerRegistry(makeOptions({ getClient: async () => client, onBuildStarted }))
+    await registry.recordTrigger(recordInput({ queueId: 7 }))
+    await registry.pollOnce()
+    expect(onBuildStarted).toHaveBeenCalledTimes(1)
+    expect(onBuildStarted).toHaveBeenCalledWith(expect.objectContaining({ status: 'running', buildNumber: 11 }))
+    await registry.pollOnce()
+    expect(onBuildStarted).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('完成通知钩子（onBuildTerminal）', () => {
   it('fires once on a running → SUCCESS transition and snapshots duration/url', async () => {
     const onBuildTerminal = vi.fn(async () => {})

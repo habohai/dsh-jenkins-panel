@@ -71,9 +71,16 @@ export interface TriggerRecord {
   notify?: boolean
   notification?: NotificationState
   notifiedAt?: number
+  /** 排队超过阈值后的“构建已开始”通知状态 */
+  startedNotification?: NotificationState
+  startedNotifiedAt?: number
+  /** Jenkins 构建开始时间（info.timestamp） */
+  startedAt?: number
   /** 终态快照（通知内容用；轮询时写入） */
   durationMs?: number
   buildUrl?: string
+  /** 失败阶段（wfapi 的第一个 FAILED stage；Freestyle/无阶段时缺省） */
+  failureStage?: string
 }
 
 /** recordTrigger 入参（由 HOST-M1-06 build_trigger 成功触发后提供） */
@@ -112,6 +119,8 @@ export interface TriggerRegistryOptions extends TriggerRegistryConfig {
    * 回调错误被捕获记日志，不影响轮询循环与其余记录的刷新。
    */
   onBuildFailed?: (record: TriggerRecord) => void | Promise<void>
+  /** queued → running（拿到 buildNumber）瞬间；当前仅用于排队超阈值后的开始通知 */
+  onBuildStarted?: (record: TriggerRecord) => void | Promise<void>
   /** 任意在途 → 终态流转（成功/失败/取消）；通知服务用，失败分析仍走 onBuildFailed */
   onBuildTerminal?: (record: TriggerRecord, previous: TriggerStatus, next: TriggerStatus) => void | Promise<void>
   /** true 时定时轮询不受 visible 门控（失败分析/完成通知的常驻检测） */
@@ -446,6 +455,30 @@ export class TriggerRegistry {
       record.buildUrl = info.url
       this.dirty = true
     }
+    if (typeof info.timestamp === 'number' && info.timestamp > 0) {
+      record.startedAt = info.timestamp
+    }
+    // queued → running：给通知服务一次“已开始”机会（是否真的发由排队阈值决定）。
+    if (prev === 'queued' && next === 'running' && this.options.onBuildStarted) {
+      try {
+        await this.options.onBuildStarted(record)
+      } catch (err) {
+        this.logger(`[dsh-jenkins-panel] 开始通知回调异常（${record.jobName}#${record.buildNumber ?? '?'}）：${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+    // 失败终态：取一次 wfapi 阶段，给完成通知补 failureStage（不拉日志）。
+    if (next === 'fail' && prev !== 'fail' && typeof record.buildNumber === 'number' && record.buildNumber > 0) {
+      try {
+        const stages = await client.getBuildStages(record.jobName, record.buildNumber)
+        const failed = stages.find((stage) => stage.status.toUpperCase() === 'FAILED')
+        if (failed !== undefined) {
+          record.failureStage = failed.name
+          this.dirty = true
+        }
+      } catch {
+        // 阶段接口不可用（Freestyle/旧插件）：不阻断失败通知
+      }
+    }
     // 在途 → 终态：通知服务先看到完整快照；失败分析仍走独立回调。
     if (prev !== next && (next === 'ok' || next === 'fail' || next === 'aborted') && this.options.onBuildTerminal) {
       try {
@@ -463,6 +496,16 @@ export class TriggerRegistry {
         this.logger(`[dsh-jenkins-panel] 失败分析回调异常（${record.jobName}#${record.buildNumber ?? '?'}）：${err instanceof Error ? err.message : String(err)}`)
       }
     }
+  }
+
+  /** 标记“构建已开始”通知状态。 */
+  async markStartedNotification(id: string, state: NotificationState, at = this.now().getTime()): Promise<boolean> {
+    const record = this.records.find((r) => r.id === id)
+    if (!record) return false
+    record.startedNotification = state
+    record.startedNotifiedAt = at
+    await this.save()
+    return true
   }
 
   /** 标记完成通知状态（通知服务在 pending/sent/skipped/failed 时调用）。 */

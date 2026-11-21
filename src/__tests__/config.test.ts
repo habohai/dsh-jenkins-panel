@@ -21,7 +21,7 @@ const VALID_CONFIG: ConfigShape = {
   panel: { defaultWidth: 560 },
   registry: { maxPerSession: 200, ttlDays: 30, pollIntervalMs: 15_000 },
   analysis: { enabled: true, tailLines: 100 },
-  notifications: { enabled: true, onSuccess: true, onFailure: false, onAborted: false, debounceMs: 2_000 },
+  notifications: { enabled: true, onSuccess: true, onFailure: false, onAborted: false, onStarted: true, startedThresholdMs: 30_000, debounceMs: 2_000 },
 }
 
 function mockCtx() {
@@ -93,6 +93,10 @@ describe('Config（Schemastery Schema：默认值与字符集 pattern）', () =>
     expect(config.notifications.enabled).toBe(true)
     expect(config.notifications.onSuccess).toBe(true)
     expect(config.notifications.onFailure).toBe(false)
+    expect(config.notifications.onStarted).toBe(true)
+    expect(config.notifications.startedThresholdMs).toBe(30_000)
+    expect(config.notifications.onStarted).toBe(true)
+    expect(config.notifications.startedThresholdMs).toBe(30_000)
     expect(config.notifications.debounceMs).toBe(2_000)
     expect('token' in config).toBe(false)
   })
