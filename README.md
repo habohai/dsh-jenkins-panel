@@ -67,6 +67,22 @@ npm install github:developerdh/dsh-jenkins-panel
 - Jenkins 卡住的步骤：先 `/stop`，无效时面板「强制终止」走 `/kill`；
 - 通知发送失败重试、离线补投、排队位置通知尚未实现，见 [开发计划](./docs/development-plan.md)。
 
+## 取消构建
+
+Jenkins 的取消不是“立即终止”，分三层：
+
+| 方式 | Jenkins 端点 | 行为 |
+|---|---|---|
+| 取消 | `POST .../stop` | 请求中断；Pipeline 会等当前步骤返回，卡住的 Docker/nuitka 步骤可能一直不结束 |
+| 强制终止（工具） | `POST .../term` | 强制终止当前运行步骤，仍可能留下等待清理的 Pipeline |
+| 强制终止（面板） | `POST .../kill` | 硬杀整条 Pipeline；最有效，也最彻底，请确认后再用 |
+
+- 面板运行中会同时显示「取消」和「强制终止」；
+- 「取消」走 `/stop`，提示“若 30 秒后仍在运行，可强制终止”；
+- 「强制终止」走 `/kill`，用于 `/stop` 后仍卡住的构建；
+- 工具 `jenkins_build_cancel` 支持 `mode: stop | term | kill`，默认 `stop`；
+- 排队中的构建走取消排队，不涉及 stop/kill。
+
 ## 本地开发
 
 ```sh
