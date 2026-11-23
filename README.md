@@ -63,7 +63,8 @@ npm install github:developerdh/dsh-jenkins-panel
 - 排队超过 `startedThresholdMs`（默认 30s）才补一条「构建已开始」通知；
 - 失败默认由 `analysis` 任务书处理：模型只读查日志，给出「建议重试 / 不建议重试」；**只有用户明确要求才执行 retry，不自动连续重试**；
 - 通知只回触发它的 DSH Session，不发飞书群；
-- 会话离线时跳过并记日志；- Jenkins 卡住的步骤：先 `/stop`，无效时面板「强制终止」走 `/kill`；
+- 会话离线时跳过并记日志；
+- Jenkins 卡住的步骤：先 `/stop`，无效时面板「强制终止」走 `/kill`；
 - 通知发送失败重试、离线补投、排队位置通知尚未实现，见 [开发计划](./docs/development-plan.md)。
 
 ## 本地开发
