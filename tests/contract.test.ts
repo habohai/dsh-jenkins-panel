@@ -55,7 +55,7 @@ const TOOL_PARAMS: Record<string, ParamSpec> = {
   jenkins_build_history: { required: ['jobName'], optional: ['limit', 'status'] },
   jenkins_build_history_all: { required: [], optional: ['page', 'pageSize', 'perJobLimit'] },
   jenkins_build_retry: { required: ['jobName'], optional: ['notify'] },
-  jenkins_build_cancel: { required: ['jobName', 'buildNumber'], optional: [] },
+  jenkins_build_cancel: { required: ['jobName', 'buildNumber'], optional: ['mode'] },
   jenkins_build_delete: { required: ['jobName', 'buildNumber'], optional: [] },
   jenkins_build_artifacts: { required: ['jobName'], optional: ['buildNumber'] },
   jenkins_queue_list: { required: [], optional: [] },

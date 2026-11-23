@@ -36,6 +36,9 @@ import type {
   WorkspaceInfo,
 } from './types.js'
 
+/** Jenkins 停止构建的三种语义（stop 普通 / term 强制终止步骤 / kill 硬杀 Pipeline） */
+export type BuildCancelMode = 'stop' | 'term' | 'kill'
+
 /** 客户端构造参数（由 connection.ts 提供；不含配置/凭据来源） */
 export interface JenkinsClientOptions {
   /** Jenkins 端点根，如 https://jenkins.example.com（不含结尾斜杠） */
@@ -462,9 +465,15 @@ export class JenkinsClient {
     }
   }
 
-  /** build_cancel：停止构建 */
-  async cancelBuild(jobName: string, buildNumber: number): Promise<void> {
-    await this.post(`${this.jobPath(jobName)}/${buildNumber}/stop`, undefined, `cancelBuild:${jobName}#${buildNumber}`)
+  /**
+   * build_cancel：停止构建。
+   * - stop：正常中断（等当前步骤返回）；
+   * - term：强制终止卡住的运行步骤；
+   * - kill：硬杀整条 Pipeline（最后手段）。
+   */
+  async cancelBuild(jobName: string, buildNumber: number, mode: BuildCancelMode = 'stop'): Promise<void> {
+    const endpoint = mode === 'term' ? 'term' : mode === 'kill' ? 'kill' : 'stop'
+    await this.post(`${this.jobPath(jobName)}/${buildNumber}/${endpoint}`, undefined, `cancelBuild:${mode}:${jobName}#${buildNumber}`)
   }
 
   /** build_delete：删除构建 */

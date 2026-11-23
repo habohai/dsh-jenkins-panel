@@ -237,8 +237,12 @@ describe('Build 系列', () => {
 
     await client.cancelBuild('job', 5)
     expect(seen[1].url).toBe('/job/job/5/stop')
+    await client.cancelBuild('job', 5, 'term')
+    expect(seen[2].url).toBe('/job/job/5/term')
+    await client.cancelBuild('job', 5, 'kill')
+    expect(seen[3].url).toBe('/job/job/5/kill')
     await client.deleteBuild('job', 5)
-    expect(seen[2].url).toBe('/job/job/5/doDelete')
+    expect(seen[4].url).toBe('/job/job/5/doDelete')
   })
 })
 

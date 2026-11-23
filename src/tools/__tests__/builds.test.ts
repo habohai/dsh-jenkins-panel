@@ -173,8 +173,12 @@ describe('build_cancel / delete / retry', () => {
     bed.client.getAllJobsRecursive = vi.fn(async () => JOBS)
 
     const cancel = await runTool(byName.get('jenkins_build_cancel')!, { jobName: 'deploy', buildNumber: 5 }) as { ok: boolean; message: string }
-    expect(bed.client.cancelBuild).toHaveBeenCalledWith('project/deploy', 5)
+    expect(bed.client.cancelBuild).toHaveBeenCalledWith('project/deploy', 5, 'stop')
     expect(cancel.ok).toBe(true)
+
+    const forced = await runTool(byName.get('jenkins_build_cancel')!, { jobName: 'deploy', buildNumber: 5, mode: 'term' }) as { ok: boolean; message: string }
+    expect(bed.client.cancelBuild).toHaveBeenCalledWith('project/deploy', 5, 'term')
+    expect(forced.message).toContain('强制终止')
 
     const del = await runTool(byName.get('jenkins_build_delete')!, { jobName: 'project/test', buildNumber: 2 }) as { ok: boolean }
     expect(bed.client.deleteBuild).toHaveBeenCalledWith('project/test', 2)

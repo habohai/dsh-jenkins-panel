@@ -44,23 +44,23 @@ describe('buildStatusDotClass / buildStatusDotTitle（标题头状态点映射�
 })
 
 describe('opButtonsFor（状态 → 操作按钮显隐，ui-button-states.md 矩阵）', () => {
-  it('running build: cancel only（运行中不能重试/删除）', () => {
-    expect(opButtonsFor({ building: true, queued: false })).toEqual({ retry: false, cancel: true, delete: false })
+  it('running build: cancel + forceCancel（运行中不能重试/删除）', () => {
+    expect(opButtonsFor({ building: true, queued: false })).toEqual({ retry: false, cancel: true, forceCancel: true, delete: false })
   })
 
   it('queued build: cancel only', () => {
-    expect(opButtonsFor({ building: false, queued: true })).toEqual({ retry: false, cancel: true, delete: false })
+    expect(opButtonsFor({ building: false, queued: true })).toEqual({ retry: false, cancel: true, forceCancel: false, delete: false })
   })
 
   it('terminal build: retry + delete（含 unstable），no cancel', () => {
-    expect(opButtonsFor({ building: false, queued: false, result: 'SUCCESS' })).toEqual({ retry: true, cancel: false, delete: true })
+    expect(opButtonsFor({ building: false, queued: false, result: 'SUCCESS' })).toEqual({ retry: true, cancel: false, forceCancel: false, delete: true })
     expect(opButtonsFor({ building: false, queued: false, result: 'FAILURE' })).toMatchObject({ retry: true, delete: true, cancel: false })
     expect(opButtonsFor({ building: false, queued: false, result: 'UNSTABLE' })).toMatchObject({ retry: true, delete: true, cancel: false })
     expect(opButtonsFor({ building: false, queued: false, result: 'ABORTED' })).toMatchObject({ retry: true, delete: true, cancel: false })
   })
 
   it('unknown state: no ops（无终态 result 不显示重试/删除）', () => {
-    expect(opButtonsFor({ building: false, queued: false, result: undefined })).toEqual({ retry: false, cancel: false, delete: false })
+    expect(opButtonsFor({ building: false, queued: false, result: undefined })).toEqual({ retry: false, cancel: false, forceCancel: false, delete: false })
   })
 })
 

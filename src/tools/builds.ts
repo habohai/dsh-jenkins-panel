@@ -224,18 +224,25 @@ export function defineBuildTools(deps: JenkinsToolsDeps): ToolDefinition[] {
 
     defineTool({
       name: 'jenkins_build_cancel',
-      description: '停止（取消）正在运行的Jenkins构建任务。返回操作结果。',
+      description: '停止（取消）正在运行的Jenkins构建任务。默认 mode=stop；若 stop 后构建仍卡在步骤中，用 mode=term 强制终止步骤；mode=kill 是最后手段（硬杀整条 Pipeline）。',
       parameters: {
         connection: { type: 'string', description: '连接名（缺省走默认连接）' },
         jobName: { type: 'string', description: '任务名或路径', required: true },
         buildNumber: { type: 'integer', description: '构建号', required: true },
+        mode: { type: 'string', description: '停止方式：stop（默认）/ term（强制终止步骤）/ kill（硬杀 Pipeline）' },
       },
       output: { schema: { type: 'json', description: '{ ok, message }' }, render: (_args, value) => textContent(value) },
       async execute(args) {
         const client = await deps.getClient(args.connection)
         const { fullName } = await resolveJobPath(client, args.jobName)
-        await client.cancelBuild(fullName, args.buildNumber)
-        return asJson({ ok: true, message: `已请求停止 ${fullName} #${args.buildNumber}` })
+        const mode = args.mode === 'term' || args.mode === 'kill' ? args.mode : 'stop'
+        await client.cancelBuild(fullName, args.buildNumber, mode)
+        const message = mode === 'term'
+          ? `已请求强制终止运行步骤 ${fullName} #${args.buildNumber}`
+          : mode === 'kill'
+            ? `已请求硬终止 Pipeline ${fullName} #${args.buildNumber}`
+            : `已请求停止 ${fullName} #${args.buildNumber}；若仍卡住可改用 mode=term`
+        return asJson({ ok: true, message })
       },
     }),
 

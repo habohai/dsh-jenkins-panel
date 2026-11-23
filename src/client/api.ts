@@ -240,7 +240,7 @@ export function retryBuild(connection: string, jobName: string, buildNumber?: nu
 export function cancelBuild(
   connection: string,
   jobName: string,
-  opts: { buildNumber?: number; queueId?: number } = {},
+  opts: { buildNumber?: number; queueId?: number; mode?: 'stop' | 'term' | 'kill' } = {},
   apiOpts: ApiCallOptions = {},
 ): Promise<OpResult> {
   return callApi<OpResult>('build.cancel', { jobName, ...opts }, { ...apiOpts, connection })

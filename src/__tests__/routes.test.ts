@@ -307,8 +307,15 @@ describe('build.log.stream / build.retry / build.cancel / build.delete（CLIENT-
   it('build.cancel stops a running build by buildNumber', async () => {
     const bed = bedWithJob()
     const res = await invoke(bed.route, 'POST', '/jenkins/api/build.cancel', { jobName: 'deploy', buildNumber: 5 })
-    expect(bed.client.cancelBuild).toHaveBeenCalledWith('project/deploy', 5)
+    expect(bed.client.cancelBuild).toHaveBeenCalledWith('project/deploy', 5, 'stop')
     expect(res.payload).toMatchObject({ ok: true, value: { ok: true, message: expect.stringContaining('#5') } })
+  })
+
+  it('build.cancel supports forced term termination', async () => {
+    const bed = bedWithJob()
+    const res = await invoke(bed.route, 'POST', '/jenkins/api/build.cancel', { jobName: 'deploy', buildNumber: 5, mode: 'term' })
+    expect(bed.client.cancelBuild).toHaveBeenCalledWith('project/deploy', 5, 'term')
+    expect(res.payload).toMatchObject({ ok: true, value: { message: expect.stringContaining('强制终止') } })
   })
 
   it('build.cancel cancels a queue item by queueId', async () => {

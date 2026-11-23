@@ -64,7 +64,7 @@ export interface BuildDetailViewProps {
   onRecordDeleted?: () => void
 }
 
-export type BuildOp = 'retry' | 'cancel' | 'delete'
+export type BuildOp = 'retry' | 'cancel' | 'forceCancel' | 'delete'
 export type BuildSubTab = 'log' | 'artifacts' | 'workspace'
 
 /** 构建中状态轮询间隔（用户 V7：状态需自动变化） */
@@ -83,6 +83,8 @@ export function opButtonsFor(opts: { building: boolean; queued: boolean; result?
   return {
     retry: terminal,
     cancel: opts.queued || opts.building,
+    /** 已开始运行但 stop 不生效时，强制终止卡住的执行步骤。 */
+    forceCancel: opts.building && !opts.queued,
     delete: terminal,
   }
 }
@@ -456,8 +458,11 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
       if (op === 'retry') {
         const res = await retryBuild(connection, jobName, buildNumber && buildNumber > 0 ? buildNumber : undefined, { sessionId })
         flashMessage(res.message)
-      } else if (op === 'cancel') {
-        const res = await cancelBuild(connection, jobName, { buildNumber: buildNumber && buildNumber > 0 ? buildNumber : undefined }, { sessionId })
+      } else if (op === 'cancel' || op === 'forceCancel') {
+        const res = await cancelBuild(connection, jobName, {
+          buildNumber: buildNumber && buildNumber > 0 ? buildNumber : undefined,
+          ...(op === 'forceCancel' ? { mode: 'kill' as const } : {}),
+        }, { sessionId })
         flashMessage(res.message)
       } else {
         const res = await deleteBuild(connection, jobName, buildNumber ?? 0, { sessionId })
@@ -565,6 +570,17 @@ export function BuildDetailView({ entry, sessionId, visible, onBack, onRecordDel
             {buttons.cancel && (
               <button type="button" className="jenkins_pillBtn jenkins_pillBtnDanger" onClick={() => runOp('cancel')} disabled={busy !== null}>
                 {busy === 'cancel' ? '取消中…' : queued ? '取消排队' : '取消'}
+              </button>
+            )}
+            {buttons.forceCancel && (
+              <button
+                type="button"
+                className="jenkins_pillBtn jenkins_pillBtnDanger"
+                title="Jenkins 的 /stop 对卡住的步骤可能无效；强制终止会硬杀整条 Pipeline"
+                onClick={() => runOp('forceCancel')}
+                disabled={busy !== null}
+              >
+                {busy === 'forceCancel' ? '强制终止中…' : '强制终止'}
               </button>
             )}
             {buttons.delete && (

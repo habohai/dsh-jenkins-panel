@@ -307,8 +307,12 @@ async function buildCancel(body: RouteBody, deps: JenkinsRoutesDeps): Promise<{ 
   const { fullName } = await resolveJobPath(client, requireString(body, 'jobName'))
   const buildNumber = asInt(body.buildNumber)
   if (buildNumber != null && buildNumber > 0) {
-    await client.cancelBuild(fullName, buildNumber)
-    return { ok: true, message: `已请求停止 ${fullName} #${buildNumber}` }
+    const mode = body.mode === 'term' || body.mode === 'kill' ? body.mode : 'stop'
+    await client.cancelBuild(fullName, buildNumber, mode)
+    const suffix = mode === 'term'
+      ? '已请求强制终止运行步骤'
+      : mode === 'kill' ? '已请求硬终止整条 Pipeline' : '已请求停止；若 30 秒后仍在运行，可强制终止'
+    return { ok: true, message: `${suffix} ${fullName} #${buildNumber}` }
   }
   const queueId = asInt(body.queueId)
   if (queueId != null) {
