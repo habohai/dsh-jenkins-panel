@@ -16,3 +16,42 @@ export function triggerNotice(notify: boolean): string {
     ? '构建已异步触发。请立即结束本轮，不要 sleep/轮询；开始/完成通知会自动回推到当前会话。'
     : '构建已异步触发；本次未开启完成通知，需要状态时再调用 jenkins_build_status。'
 }
+
+/** 仅用于从 dsh ToolRunContext 拿到的 agent 最小结构面（不依赖完整 Agent 类型）。 */
+export interface PromptAgentLike {
+  ctx?: {
+    systemPrompt?: {
+      section: (section: { name: string; order: number; text: string }) => unknown
+    }
+    effect?: (callback: () => unknown, label?: string) => unknown
+  }
+}
+
+const promptedAgents = new WeakSet<object>()
+
+/**
+ * 首次真正使用 Jenkins 触发/重试工具时，仅给该 agent 注册异步提示。
+ * 不做全局 systemPrompt 注册，避免所有会话都承担固定 token。
+ * 首次调用的即时约束由工具返回的 nextAction/notice 承担；此提示从下一次请求开始生效。
+ */
+export function ensureAsyncBuildPrompt(agent: unknown): void {
+  if (agent === undefined || agent === null || typeof agent !== 'object') return
+  const candidate = agent as PromptAgentLike
+  const ctx = candidate.ctx
+  if (ctx === undefined) return
+  const section = ctx.systemPrompt?.section
+  if (section === undefined || promptedAgents.has(candidate)) return
+  promptedAgents.add(candidate)
+  const register = (): unknown => section({
+    name: 'dsh-jenkins-panel:async-builds',
+    order: 1600,
+    text: JENKINS_ASYNC_BUILD_PROMPT,
+  })
+  try {
+    if (ctx.effect !== undefined) ctx.effect(register, 'dsh-jenkins-panel: async build prompt')
+    else register()
+  } catch (err) {
+    promptedAgents.delete(candidate)
+    console.warn(`[dsh-jenkins-panel] 注册异步构建提示失败：${err instanceof Error ? err.message : String(err)}`)
+  }
+}

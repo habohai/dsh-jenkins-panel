@@ -59,7 +59,7 @@ npm install github:developerdh/dsh-jenkins-panel
 ## 触发与通知行为
 
 - 触发工具**恒不等待**，返回 `nextAction=end_turn_and_wait_for_jenkins_notification` 和 `notice`，模型应直接结束当前 turn；
-- 插件同时向 host 注册一条系统提示 `Jenkins 构建是异步的`，让模型在触发前就知道不要写 sleep/轮询脚本；
+- 某个 agent 首次调用 Jenkins 触发/重试后，插件才给**该 agent** 注册 `Jenkins 构建是异步的` 系统提示；不会给所有会话增加固定上下文；
 - 普通构建只发一条完成通知；
 - 排队超过 `startedThresholdMs`（默认 30s）才补一条「构建已开始」通知；
 - 失败默认由 `analysis` 任务书处理：模型只读查日志，给出「建议重试 / 不建议重试」；**只有用户明确要求才执行 retry，不自动连续重试**；

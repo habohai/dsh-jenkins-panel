@@ -14,7 +14,7 @@ import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import { getAllBuildHistory } from '../jenkins/all-build-history.js'
 import type { BuildResult, ParameterDefinition } from '../jenkins/types.js'
 import { redactParams } from '../jenkins/params.js'
-import { NEXT_ACTION_NO_NOTIFICATION, NEXT_ACTION_WAIT_NOTIFICATION, triggerNotice } from '../prompts.js'
+import { ensureAsyncBuildPrompt, NEXT_ACTION_NO_NOTIFICATION, NEXT_ACTION_WAIT_NOTIFICATION, triggerNotice } from '../prompts.js'
 import { asJson, queueIdFromUrl, recordTriggered, resolveJobPath, sleep, textContent, type JenkinsToolsDeps } from './shared.js'
 
 /** 参数合并：默认值（非空）打底 + 模型提供值覆盖（校验/合并口径） */
@@ -67,6 +67,8 @@ export function defineBuildTools(deps: JenkinsToolsDeps): ToolDefinition[] {
           params: merged,
           notify,
         })
+        ensureAsyncBuildPrompt(exec.agent)
+        ensureAsyncBuildPrompt(exec.agent)
         return asJson({
           ...(record === undefined ? {} : { triggerId: record.id }),
           ...(queueId === undefined ? {} : { queueId }),
