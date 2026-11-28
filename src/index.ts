@@ -30,6 +30,7 @@ import {
 import { clientFor, createConnectionRegistry, listConnections, type JenkinsConnectionMeta } from './jenkins/connection.js'
 import { createFailureAnalysis, type AnalysisAgentLike } from './jenkins/failure-analysis.js'
 import { createBuildNotifications } from './jenkins/notifications.js'
+import { JENKINS_ASYNC_BUILD_PROMPT } from './prompts.js'
 import { migrateLegacyDataDir } from './jenkins/legacy-migration.js'
 import { createTriggerRegistry, registryFile, type TriggerRecord } from './jenkins/registry.js'
 import { resolveWorkspaceIdOfSession, type WorkspaceRegistryLike } from './jenkins/workspace-resolve.js'
@@ -240,6 +241,19 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
       return undefined
     }
   }
+  // 触发前就告知模型：Jenkins 构建是异步的。工具描述只在模型选择工具时出现，
+  // 系统提示才能约束“触发后写 sleep/轮询脚本”的默认习惯。
+  ctx.inject(['systemPrompt'], (promptCtx) => {
+    const systemPrompt = (promptCtx as unknown as {
+      systemPrompt: { section: (section: { name: string; order: number; text: string }) => unknown }
+    }).systemPrompt
+    systemPrompt.section({
+      name: 'dsh-jenkins-panel:async-builds',
+      order: 1600,
+      text: JENKINS_ASYNC_BUILD_PROMPT,
+    })
+  })
+
   // ⑥ 触发记录注册表（M1-08）：数据目录 = $DSH_HOME（HOST-M1-08 口径），file = $DSH_HOME/dsh-jenkins-panel/registry.json
   //   analysis.enabled（默认开）双职责：注册表 watchAlways 常驻轮询（面板关闭也能发现失败）
   //   + 在途→fail 流转瞬间回调分析推送器（handleBuildFailed 指向后置赋值，轮询定时器晚于此生效）

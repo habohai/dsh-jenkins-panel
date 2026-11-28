@@ -53,6 +53,19 @@ describe('jenkins_build_trigger', () => {
     })
   })
 
+  it('returns no-notification guidance when notify is disabled', async () => {
+    const { bed, byName } = tools()
+    bed.client.getAllJobsRecursive = vi.fn(async () => JOBS)
+    bed.client.getJobParams = vi.fn(async () => [])
+    bed.client.triggerBuild = vi.fn(async () => ({ queueUrl: 'https://jenkins.example.com/queue/item/43/' }))
+    const value = await runTool(byName.get('jenkins_build_trigger')!, { jobName: 'project/deploy', notify: false }) as Record<string, unknown>
+    expect(value).toMatchObject({
+      notify: false,
+      nextAction: 'end_turn_or_query_status_later',
+      notice: expect.stringContaining('未开启完成通知'),
+    })
+  })
+
   it('returns lossless JSON when not waiting (no undefined fields)', async () => {
     const { bed, byName } = tools()
     bed.client.getAllJobsRecursive = vi.fn(async () => JOBS)
@@ -61,7 +74,14 @@ describe('jenkins_build_trigger', () => {
 
     const value = await runTool(byName.get('jenkins_build_trigger')!, { jobName: 'project/deploy' }) as Record<string, unknown>
     // 触发后立即返回可关联信息；buildNumber 仍不在触发时同步等待/查询。
-    expect(value).toMatchObject({ queueId: 42, triggerId: 'rec-1', status: 'queued', notify: true })
+    expect(value).toMatchObject({
+      queueId: 42,
+      triggerId: 'rec-1',
+      status: 'queued',
+      notify: true,
+      nextAction: 'end_turn_and_wait_for_jenkins_notification',
+      notice: expect.stringContaining('立即结束本轮'),
+    })
     expect('buildNumber' in value).toBe(false)
   })
 
